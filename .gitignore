@@ -65,3 +65,5 @@ out/
 
 # Bun
 bun.lockb
+.vercel
+.env*.local

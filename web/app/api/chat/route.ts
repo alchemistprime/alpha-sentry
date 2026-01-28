@@ -1,5 +1,6 @@
 import { config } from 'dotenv';
 import { resolve } from 'path';
+import { Redis } from '@upstash/redis';
 
 // Load environment variables from parent directory's .env
 config({ path: resolve(process.cwd(), '../.env') });
@@ -18,26 +19,40 @@ async function getInMemoryChatHistory() {
 export const runtime = 'nodejs';
 export const maxDuration = 300; // 5 minutes for complex queries
 
-// Session storage - maps session ID to chat history instance
-// In production, you'd want Redis or similar for persistence across server restarts
-const sessions = new Map<string, InstanceType<Awaited<ReturnType<typeof getInMemoryChatHistory>>>>();
+// Redis client for session persistence (Vercel KV / Upstash)
+// Falls back to in-memory storage if Redis is not configured
+const redis = process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN
+  ? new Redis({
+      url: process.env.KV_REST_API_URL,
+      token: process.env.KV_REST_API_TOKEN,
+    })
+  : null;
 
-// Clean up old sessions after 1 hour of inactivity
-const SESSION_TTL = 60 * 60 * 1000;
-const sessionLastAccess = new Map<string, number>();
+// Session TTL: 1 hour in seconds
+const SESSION_TTL_SECONDS = 60 * 60;
 
-function cleanupOldSessions() {
-  const now = Date.now();
-  for (const [sessionId, lastAccess] of sessionLastAccess.entries()) {
-    if (now - lastAccess > SESSION_TTL) {
-      sessions.delete(sessionId);
-      sessionLastAccess.delete(sessionId);
-    }
-  }
+// Fallback in-memory storage for local development without Redis
+const localSessions = new Map<string, { messages: unknown[]; model: string }>();
+
+interface StoredSession {
+  messages: unknown[];
+  model: string;
 }
 
-// Run cleanup every 10 minutes
-setInterval(cleanupOldSessions, 10 * 60 * 1000);
+async function getSession(sessionId: string): Promise<StoredSession | null> {
+  if (redis) {
+    return await redis.get<StoredSession>(`session:${sessionId}`);
+  }
+  return localSessions.get(sessionId) || null;
+}
+
+async function saveSession(sessionId: string, data: StoredSession): Promise<void> {
+  if (redis) {
+    await redis.set(`session:${sessionId}`, data, { ex: SESSION_TTL_SECONDS });
+  } else {
+    localSessions.set(sessionId, data);
+  }
+}
 
 export async function POST(req: Request) {
   const { messages, sessionId: clientSessionId } = await req.json();
@@ -53,17 +68,15 @@ export async function POST(req: Request) {
 
   const query = lastMessage.content;
 
-  // Get or create session history
+  // Get or create session history from Redis
   const InMemoryChatHistory = await getInMemoryChatHistory();
-  let chatHistory = sessions.get(sessionId);
+  const model = process.env.DEXTER_MODEL || 'gpt-5.2';
 
-  if (!chatHistory) {
-    chatHistory = new InMemoryChatHistory(process.env.DEXTER_MODEL || 'gpt-5.2');
-    sessions.set(sessionId, chatHistory);
-  }
-
-  // Update last access time
-  sessionLastAccess.set(sessionId, Date.now());
+  // Restore session from Redis if it exists
+  const storedSession = await getSession(sessionId);
+  const chatHistory = storedSession
+    ? InMemoryChatHistory.fromMessages(storedSession.messages, storedSession.model)
+    : new InMemoryChatHistory(model);
 
   // Save the user query to history
   chatHistory.saveUserQuery(query);
@@ -157,6 +170,8 @@ export async function POST(req: Request) {
         // Save the answer to history for future context
         if (finalAnswer && chatHistory) {
           await chatHistory.saveAnswer(finalAnswer);
+          // Persist updated session to Redis
+          await saveSession(sessionId, chatHistory.toJSON());
         }
       } catch (error) {
         console.error('Agent error:', error);

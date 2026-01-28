@@ -45,6 +45,27 @@ export class InMemoryChatHistory {
   }
 
   /**
+   * Creates an InMemoryChatHistory instance from previously saved messages.
+   * Used for restoring session state from persistent storage (e.g., Redis).
+   */
+  static fromMessages(messages: Message[], model: string = DEFAULT_MODEL): InMemoryChatHistory {
+    const instance = new InMemoryChatHistory(model);
+    instance.messages = messages;
+    return instance;
+  }
+
+  /**
+   * Returns a JSON-serializable representation of the chat history.
+   * Used for persisting session state to external storage (e.g., Redis).
+   */
+  toJSON(): { messages: Message[]; model: string } {
+    return {
+      messages: this.messages,
+      model: this.model,
+    };
+  }
+
+  /**
    * Hashes a query string for cache key generation
    */
   private hashQuery(query: string): string {
