@@ -1,8 +1,10 @@
-name: Deploy to Vercel
+name: Manual Deploy to Vercel
+
+# This workflow is a backup - Vercel automatically deploys on push via GitHub integration
+# Use this only if you need to manually trigger a deployment
 
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:  # Manual trigger only
 
 jobs:
   deploy:
@@ -21,17 +23,11 @@ jobs:
       - name: Install Vercel CLI
         run: bun add -g vercel
 
-      - name: Install dependencies (root)
-        run: bun install
-
-      - name: Install dependencies (web)
-        run: cd web && bun install
-
       - name: Pull Vercel Environment
-        run: cd web && vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
 
       - name: Build Project
-        run: cd web && vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
 
       - name: Deploy to Vercel
-        run: cd web && vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}

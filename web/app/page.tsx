@@ -5,6 +5,30 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import Image from 'next/image';
 
+// Dynamic thinking states for engaging loading experience
+const THINKING_VERBS = [
+  'Analyzing',
+  'Investigating',
+  'Examining',
+  'Evaluating',
+  'Scrutinizing',
+  'Quantifying',
+  'Extrapolating',
+  'Correlating',
+  'Synthesizing',
+  'Aggregating',
+  'Parsing',
+  'Validating',
+  'Cross-referencing',
+  'Calculating',
+  'Modeling',
+  'Assessing',
+  'Interpreting',
+  'Triangulating',
+  'Benchmarking',
+  'Reconciling',
+];
+
 interface Message {
   id: string;
   role: 'user' | 'assistant';
@@ -281,33 +305,35 @@ export default function Chat() {
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
         {messages.length === 0 && !isLoading && (
           <div className="flex flex-col items-center justify-center h-full text-center text-gray-500">
-            <Image
-              src="/logo.png"
-              alt="Bindle"
-              width={64}
-              height={64}
-              className="w-16 h-16 mb-4 opacity-80"
-            />
-            <h2 className="text-2xl font-semibold text-white mb-4">Alpha Sentry</h2>
+            <div className="flex items-center gap-3 mb-6">
+              <Image
+                src="/logo.png"
+                alt="Alpha Sentry"
+                width={28}
+                height={28}
+                className="w-7 h-7"
+              />
+              <span className="text-xl font-semibold text-white">Alpha Sentry</span>
+            </div>
             <p className="max-w-md mb-8 text-gray-400">
               Ask me anything about financial markets, company fundamentals,
               stock analysis, or economic trends.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm max-w-2xl">
               <SuggestionButton
-                text="What's Apple's revenue growth over the past 3 years?"
+                text="Analyze cash flow quality vs reported earnings for [Company] - are there red flags?"
                 onClick={setInput}
               />
               <SuggestionButton
-                text="Compare Tesla and Ford's profit margins"
+                text="Compare days sales outstanding trends vs peers for [Company]"
                 onClick={setInput}
               />
               <SuggestionButton
-                text="Analyze NVIDIA's latest earnings report"
+                text="Compare [Company]'s accounts receivable growth to revenue growth over 3 years"
                 onClick={setInput}
               />
               <SuggestionButton
-                text="What are the key metrics for evaluating banks?"
+                text="Analyze insider selling patterns and executive departures at [Company] over the past 12 months"
                 onClick={setInput}
               />
             </div>
@@ -351,16 +377,20 @@ export default function Chat() {
             <div className="w-8 h-8 flex items-center justify-center">
               <Image
                 src="/logo.png"
-                alt="Bindle"
+                alt="Alpha Sentry"
                 width={32}
                 height={32}
-                className="w-8 h-8 thinking-pulse"
+                className="w-8 h-8 animate-pulse"
               />
             </div>
             <div className="bg-neutral-900 rounded-lg px-4 py-3 text-gray-300 max-w-[80%] border border-neutral-800">
-              <div className="flex items-center gap-2">
-                <span className="text-red-500">●</span>
-                <span>{thinkingStatus.message.length > 150
+              <div className="flex items-center gap-3">
+                <span className="flex gap-1">
+                  <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
+                  <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" style={{ animationDelay: '150ms' }} />
+                  <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" style={{ animationDelay: '300ms' }} />
+                </span>
+                <span className="text-gray-400">{thinkingStatus.message.length > 150
                   ? thinkingStatus.message.slice(0, 150) + '...'
                   : thinkingStatus.message}</span>
               </div>
@@ -373,10 +403,10 @@ export default function Chat() {
           <div className="flex items-start gap-3">
             <Image
               src="/logo.png"
-              alt="Bindle"
+              alt="Alpha Sentry"
               width={32}
               height={32}
-              className="w-8 h-8 flex-shrink-0"
+              className={`w-8 h-8 flex-shrink-0 ${isLoading && !streamingContent ? 'animate-pulse' : ''}`}
             />
             <div className="flex-1 bg-neutral-900 rounded-lg p-4 tool-status border border-neutral-800">
               <div className="space-y-3">
@@ -384,6 +414,12 @@ export default function Chat() {
                   <ToolStatusItem key={status.id} status={status} />
                 ))}
               </div>
+              {/* Show composing indicator after all tools complete but before streaming */}
+              {isLoading && !streamingContent && toolStatuses.length > 0 && toolStatuses.every(t => t.status !== 'running') && (
+                <div className="pt-3 mt-3 border-t border-neutral-800">
+                  <ComposingIndicator />
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -414,15 +450,12 @@ export default function Chat() {
           <div className="flex items-start gap-3">
             <Image
               src="/logo.png"
-              alt="Bindle"
+              alt="Alpha Sentry"
               width={32}
               height={32}
-              className="w-8 h-8"
+              className="w-8 h-8 animate-pulse"
             />
-            <div className="flex items-center gap-3 text-gray-500">
-              <LoadingDots />
-              <span>Starting analysis...</span>
-            </div>
+            <ThinkingIndicator />
           </div>
         )}
 
@@ -518,5 +551,89 @@ function LoadingDots() {
       <span className="w-2 h-2 bg-red-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
       <span className="w-2 h-2 bg-red-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
     </span>
+  );
+}
+
+// Composing verbs for after data retrieval
+const COMPOSING_VERBS = [
+  'Composing analysis',
+  'Synthesizing findings',
+  'Structuring response',
+  'Formulating insights',
+  'Drafting report',
+  'Consolidating data',
+  'Preparing summary',
+  'Articulating conclusions',
+];
+
+function ThinkingIndicator() {
+  const [verbIndex, setVerbIndex] = useState(0);
+  const [dots, setDots] = useState('');
+
+  useEffect(() => {
+    // Cycle through verbs every 2 seconds
+    const verbInterval = setInterval(() => {
+      setVerbIndex(prev => (prev + 1) % THINKING_VERBS.length);
+    }, 2000);
+
+    // Animate dots every 400ms
+    const dotsInterval = setInterval(() => {
+      setDots(prev => (prev.length >= 3 ? '' : prev + '.'));
+    }, 400);
+
+    return () => {
+      clearInterval(verbInterval);
+      clearInterval(dotsInterval);
+    };
+  }, []);
+
+  return (
+    <div className="flex items-center gap-3">
+      <div className="flex gap-1">
+        <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+        <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" style={{ animationDelay: '150ms' }} />
+        <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" style={{ animationDelay: '300ms' }} />
+      </div>
+      <span className="text-gray-400 min-w-[180px]">
+        <span className="text-red-400 font-medium transition-all duration-300">{THINKING_VERBS[verbIndex]}</span>
+        <span className="text-gray-500">{dots}</span>
+      </span>
+    </div>
+  );
+}
+
+function ComposingIndicator() {
+  const [verbIndex, setVerbIndex] = useState(0);
+  const [dots, setDots] = useState('');
+
+  useEffect(() => {
+    // Cycle through composing verbs every 1.5 seconds (faster since user is waiting)
+    const verbInterval = setInterval(() => {
+      setVerbIndex(prev => (prev + 1) % COMPOSING_VERBS.length);
+    }, 1500);
+
+    // Animate dots every 350ms
+    const dotsInterval = setInterval(() => {
+      setDots(prev => (prev.length >= 3 ? '' : prev + '.'));
+    }, 350);
+
+    return () => {
+      clearInterval(verbInterval);
+      clearInterval(dotsInterval);
+    };
+  }, []);
+
+  return (
+    <div className="flex items-center gap-3">
+      <div className="flex gap-1">
+        <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
+        <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" style={{ animationDelay: '100ms' }} />
+        <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" style={{ animationDelay: '200ms' }} />
+      </div>
+      <span className="text-gray-400">
+        <span className="text-red-400 font-medium">{COMPOSING_VERBS[verbIndex]}</span>
+        <span className="text-gray-500">{dots}</span>
+      </span>
+    </div>
   );
 }

@@ -33,6 +33,7 @@
     "zod": "^4.1.13"
   },
   "devDependencies": {
+    "next": "^15.0.0",
     "@babel/core": "^7.28.5",
     "@babel/preset-env": "^7.28.5",
     "@types/bun": "latest",

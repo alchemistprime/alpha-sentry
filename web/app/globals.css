@@ -165,6 +165,28 @@ body {
   animation: pulse 1.5s ease-in-out infinite;
 }
 
+/* Smooth text fade for thinking verbs */
+@keyframes fadeInOut {
+  0% { opacity: 0; transform: translateY(-4px); }
+  15% { opacity: 1; transform: translateY(0); }
+  85% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(4px); }
+}
+
+.thinking-verb {
+  animation: fadeInOut 2s ease-in-out infinite;
+}
+
+/* Staggered dot pulse */
+@keyframes dotPulse {
+  0%, 100% { opacity: 0.3; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+
+.dot-pulse {
+  animation: dotPulse 1.2s ease-in-out infinite;
+}
+
 /* Tool status styling */
 .tool-status {
   @apply font-mono text-sm;

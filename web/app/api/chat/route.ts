@@ -16,7 +16,7 @@ async function getInMemoryChatHistory() {
 }
 
 export const runtime = 'nodejs';
-export const maxDuration = 60;
+export const maxDuration = 300; // 5 minutes for complex queries
 
 // Session storage - maps session ID to chat history instance
 // In production, you'd want Redis or similar for persistence across server restarts
@@ -78,6 +78,7 @@ export async function POST(req: Request) {
         const agent = Agent.create({
           model: process.env.DEXTER_MODEL || 'gpt-5.2',
           modelProvider: process.env.DEXTER_MODEL_PROVIDER || 'openai',
+          maxIterations: 5, // Limit iterations for web UI responsiveness
         });
 
         // Helper to send a data event (for interim status)
