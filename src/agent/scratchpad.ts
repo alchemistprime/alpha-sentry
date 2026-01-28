@@ -40,10 +40,14 @@ export interface ScratchpadEntry {
  * This is the single source of truth for all agent work on a query.
  */
 export class Scratchpad {
-  private readonly scratchpadDir = '.dexter/scratchpad';
+  private readonly scratchpadDir: string;
   private readonly filepath: string;
 
   constructor(query: string) {
+    // Use /tmp on serverless (Vercel) since filesystem is read-only
+    // Use .dexter/scratchpad locally for debugging/history
+    this.scratchpadDir = process.env.VERCEL ? '/tmp/dexter-scratchpad' : '.dexter/scratchpad';
+
     if (!existsSync(this.scratchpadDir)) {
       mkdirSync(this.scratchpadDir, { recursive: true });
     }
