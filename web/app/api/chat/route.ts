@@ -1,9 +1,13 @@
 import { config } from 'dotenv';
 import { resolve } from 'path';
 import { Redis } from '@upstash/redis';
+import { Client } from 'langsmith';
 
 // Load environment variables from parent directory's .env
 config({ path: resolve(process.cwd(), '../.env') });
+
+// LangSmith client for flushing traces in serverless environment
+const langsmithClient = new Client();
 
 // Dynamic imports to handle module resolution
 async function getAgent() {
@@ -180,6 +184,9 @@ export async function POST(req: Request) {
           encoder.encode(`data: ${JSON.stringify({ type: 'error', message: errorMessage })}\n\n`)
         );
       } finally {
+        // Flush LangSmith traces before serverless function terminates
+        // This ensures all trace data (including prompts) is sent
+        await langsmithClient.awaitPendingTraceBatches();
         controller.close();
       }
     },

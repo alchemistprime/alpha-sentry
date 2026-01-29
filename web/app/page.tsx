@@ -288,7 +288,7 @@ export default function Chat() {
           className="w-10 h-10"
         />
         <div className="flex-1">
-          <h1 className="font-semibold text-3xl">Alpha Sentry</h1>
+          <h1 className="font-semibold text-3xl">AlphaSentry</h1>
           <p className="text-[10px] text-gray-500">Financial Research Agent</p>
         </div>
         {messages.length > 0 && (
@@ -308,12 +308,12 @@ export default function Chat() {
             <div className="flex items-center gap-3 mb-6">
               <Image
                 src="/logo.png"
-                alt="Alpha Sentry"
+                alt="AlphaSentry"
                 width={28}
                 height={28}
                 className="w-7 h-7"
               />
-              <span className="text-xl font-semibold text-white">Alpha Sentry</span>
+              <span className="text-xl font-semibold text-white">AlphaSentry</span>
             </div>
             <p className="max-w-md mb-8 text-gray-400">
               Ask me anything about financial markets, company fundamentals,
@@ -360,7 +360,16 @@ export default function Chat() {
                   />
                   <div className="flex-1 min-w-0">
                     <div className="prose prose-invert max-w-none">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          a: ({ href, children }) => (
+                            <a href={href} target="_blank" rel="noopener noreferrer">
+                              {children}
+                            </a>
+                          ),
+                        }}
+                      >
                         {message.content}
                       </ReactMarkdown>
                     </div>
@@ -377,7 +386,7 @@ export default function Chat() {
             <div className="w-8 h-8 flex items-center justify-center">
               <Image
                 src="/logo.png"
-                alt="Alpha Sentry"
+                alt="AlphaSentry"
                 width={32}
                 height={32}
                 className="w-8 h-8 animate-pulse"
@@ -403,7 +412,7 @@ export default function Chat() {
           <div className="flex items-start gap-3">
             <Image
               src="/logo.png"
-              alt="Alpha Sentry"
+              alt="AlphaSentry"
               width={32}
               height={32}
               className={`w-8 h-8 flex-shrink-0 ${isLoading && !streamingContent ? 'animate-pulse' : ''}`}
@@ -436,7 +445,16 @@ export default function Chat() {
             />
             <div className="flex-1 min-w-0">
               <div className="prose prose-invert max-w-none">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    a: ({ href, children }) => (
+                      <a href={href} target="_blank" rel="noopener noreferrer">
+                        {children}
+                      </a>
+                    ),
+                  }}
+                >
                   {streamingContent}
                 </ReactMarkdown>
                 <span className="inline-block w-2 h-5 bg-red-500 animate-pulse ml-1" />
@@ -450,7 +468,7 @@ export default function Chat() {
           <div className="flex items-start gap-3">
             <Image
               src="/logo.png"
-              alt="Alpha Sentry"
+              alt="AlphaSentry"
               width={32}
               height={32}
               className="w-8 h-8 animate-pulse"
