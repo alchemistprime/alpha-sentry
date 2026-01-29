@@ -7,21 +7,28 @@ import { traceable } from 'langsmith/traceable';
 // Load environment variables from parent directory's .env (local dev only)
 config({ path: resolve(process.cwd(), '../.env') });
 
+// Support both LANGCHAIN_API_KEY and LANGSMITH_API_KEY (common Vercel naming)
+const langsmithApiKey = process.env.LANGCHAIN_API_KEY || process.env.LANGSMITH_API_KEY;
+const langsmithProject = process.env.LANGCHAIN_PROJECT || process.env.LANGSMITH_PROJECT || 'alpha-sentry';
+
 // Ensure LangChain tracing is enabled (Vercel injects env vars, but we need to verify they're set)
 // This enables automatic tracing for all LangChain operations
-if (process.env.LANGCHAIN_API_KEY && !process.env.LANGCHAIN_TRACING_V2) {
+if (langsmithApiKey) {
+  process.env.LANGCHAIN_API_KEY = langsmithApiKey;
   process.env.LANGCHAIN_TRACING_V2 = 'true';
-}
-if (process.env.LANGCHAIN_API_KEY && !process.env.LANGCHAIN_PROJECT) {
-  process.env.LANGCHAIN_PROJECT = 'alpha-sentry';
+  process.env.LANGCHAIN_PROJECT = langsmithProject;
+} else {
+  console.warn('[LangSmith] No API key found (LANGCHAIN_API_KEY or LANGSMITH_API_KEY). Tracing disabled.');
 }
 
 // LangSmith client for flushing traces in serverless environment
 // Explicitly pass config to ensure it picks up Vercel env vars
-const langsmithClient = new Client({
-  apiKey: process.env.LANGCHAIN_API_KEY,
-  apiUrl: process.env.LANGCHAIN_ENDPOINT || 'https://api.smith.langchain.com',
-});
+const langsmithClient = langsmithApiKey
+  ? new Client({
+      apiKey: langsmithApiKey,
+      apiUrl: process.env.LANGCHAIN_ENDPOINT || process.env.LANGSMITH_ENDPOINT || 'https://api.smith.langchain.com',
+    })
+  : null;
 
 // Dynamic imports to handle module resolution
 async function getAgent() {
@@ -72,24 +79,26 @@ async function saveSession(sessionId: string, data: StoredSession): Promise<void
   }
 }
 
-// Wrap agent execution with LangSmith tracing
-const runAgentTraced = traceable(
-  async function* runAgent(
-    agent: { run: (query: string, history: unknown) => AsyncGenerator<unknown> },
-    query: string,
-    chatHistory: unknown
-  ) {
-    for await (const event of agent.run(query, chatHistory)) {
-      yield event;
-    }
-  },
-  {
-    name: 'AlphaSentry Agent',
-    run_type: 'chain',
-    project_name: process.env.LANGCHAIN_PROJECT || 'alpha-sentry',
-    client: langsmithClient,
-  }
-);
+// Wrap agent execution with LangSmith tracing (if configured)
+const runAgentTraced = langsmithApiKey
+  ? traceable(
+      async function* runAgent(
+        agent: { run: (query: string, history: unknown) => AsyncGenerator<unknown> },
+        query: string,
+        chatHistory: unknown
+      ) {
+        for await (const event of agent.run(query, chatHistory)) {
+          yield event;
+        }
+      },
+      {
+        name: 'AlphaSentry Agent',
+        run_type: 'chain',
+        project_name: langsmithProject,
+        client: langsmithClient!,
+      }
+    )
+  : null;
 
 export async function POST(req: Request) {
   const { messages, sessionId: clientSessionId } = await req.json();
@@ -150,8 +159,12 @@ export async function POST(req: Request) {
 
         let finalAnswer = '';
 
-        // Use traced wrapper for LangSmith observability
-        for await (const event of runAgentTraced(agent, query, chatHistory)) {
+        // Use traced wrapper for LangSmith observability (falls back to untraced if not configured)
+        const agentRunner = runAgentTraced
+          ? runAgentTraced(agent, query, chatHistory)
+          : agent.run(query, chatHistory);
+
+        for await (const event of agentRunner) {
           switch (event.type) {
             case 'thinking':
               sendEvent({
@@ -220,7 +233,9 @@ export async function POST(req: Request) {
       } finally {
         // Flush LangSmith traces before serverless function terminates
         // This ensures all trace data (including prompts) is sent
-        await langsmithClient.awaitPendingTraceBatches();
+        if (langsmithClient) {
+          await langsmithClient.awaitPendingTraceBatches();
+        }
         controller.close();
       }
     },
