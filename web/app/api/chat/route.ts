@@ -2,12 +2,26 @@ import { config } from 'dotenv';
 import { resolve } from 'path';
 import { Redis } from '@upstash/redis';
 import { Client } from 'langsmith';
+import { traceable } from 'langsmith/traceable';
 
-// Load environment variables from parent directory's .env
+// Load environment variables from parent directory's .env (local dev only)
 config({ path: resolve(process.cwd(), '../.env') });
 
+// Ensure LangChain tracing is enabled (Vercel injects env vars, but we need to verify they're set)
+// This enables automatic tracing for all LangChain operations
+if (process.env.LANGCHAIN_API_KEY && !process.env.LANGCHAIN_TRACING_V2) {
+  process.env.LANGCHAIN_TRACING_V2 = 'true';
+}
+if (process.env.LANGCHAIN_API_KEY && !process.env.LANGCHAIN_PROJECT) {
+  process.env.LANGCHAIN_PROJECT = 'alpha-sentry';
+}
+
 // LangSmith client for flushing traces in serverless environment
-const langsmithClient = new Client();
+// Explicitly pass config to ensure it picks up Vercel env vars
+const langsmithClient = new Client({
+  apiKey: process.env.LANGCHAIN_API_KEY,
+  apiUrl: process.env.LANGCHAIN_ENDPOINT || 'https://api.smith.langchain.com',
+});
 
 // Dynamic imports to handle module resolution
 async function getAgent() {
@@ -57,6 +71,25 @@ async function saveSession(sessionId: string, data: StoredSession): Promise<void
     localSessions.set(sessionId, data);
   }
 }
+
+// Wrap agent execution with LangSmith tracing
+const runAgentTraced = traceable(
+  async function* runAgent(
+    agent: { run: (query: string, history: unknown) => AsyncGenerator<unknown> },
+    query: string,
+    chatHistory: unknown
+  ) {
+    for await (const event of agent.run(query, chatHistory)) {
+      yield event;
+    }
+  },
+  {
+    name: 'AlphaSentry Agent',
+    run_type: 'chain',
+    project_name: process.env.LANGCHAIN_PROJECT || 'alpha-sentry',
+    client: langsmithClient,
+  }
+);
 
 export async function POST(req: Request) {
   const { messages, sessionId: clientSessionId } = await req.json();
@@ -117,7 +150,8 @@ export async function POST(req: Request) {
 
         let finalAnswer = '';
 
-        for await (const event of agent.run(query, chatHistory)) {
+        // Use traced wrapper for LangSmith observability
+        for await (const event of runAgentTraced(agent, query, chatHistory)) {
           switch (event.type) {
             case 'thinking':
               sendEvent({
