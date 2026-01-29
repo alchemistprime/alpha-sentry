@@ -1,7 +1,8 @@
 import { config } from 'dotenv';
 import { resolve } from 'path';
 import { Redis } from '@upstash/redis';
-import { Client, RunTree } from 'langsmith';
+import { Client } from 'langsmith';
+import { traceable } from 'langsmith/traceable';
 
 // Load environment variables from parent directory's .env (local dev only)
 config({ path: resolve(process.cwd(), '../.env') });
@@ -19,13 +20,12 @@ console.log('[LangSmith] Config:', {
   tracingV2: process.env.LANGCHAIN_TRACING_V2,
 });
 
-// Ensure LangChain tracing is enabled (Vercel injects env vars, but we need to verify they're set)
-// This enables automatic tracing for all LangChain operations
+// Configure LangSmith - use explicit tracing only (disable auto-tracing to avoid hanging generators)
 if (langsmithApiKey) {
-  process.env.LANGCHAIN_API_KEY = langsmithApiKey;
-  process.env.LANGCHAIN_TRACING_V2 = 'true';
+  // Don't set LANGCHAIN_TRACING_V2 - auto-tracing causes hanging traces with async generators
+  // We use explicit traceable wrapper instead for proper lifecycle management
   process.env.LANGCHAIN_PROJECT = langsmithProject;
-  console.log('[LangSmith] Tracing ENABLED for project:', langsmithProject);
+  console.log('[LangSmith] Explicit tracing ENABLED for project:', langsmithProject);
 } else {
   console.warn('[LangSmith] No API key found (LANGCHAIN_API_KEY or LANGSMITH_API_KEY). Tracing disabled.');
 }
@@ -88,6 +88,34 @@ async function saveSession(sessionId: string, data: StoredSession): Promise<void
   }
 }
 
+// Traceable wrapper using callback pattern (not generator) for proper "done" signal
+// This ensures LangSmith gets a clear completion when the promise resolves
+const runAgentTraced = langsmithClient
+  ? traceable(
+      async (
+        agent: { run: (q: string, h: unknown) => AsyncGenerator<unknown> },
+        query: string,
+        chatHistory: unknown,
+        onEvent: (event: unknown) => void | Promise<void>
+      ): Promise<string> => {
+        let finalAnswer = '';
+        for await (const event of agent.run(query, chatHistory)) {
+          await onEvent(event);
+          if ((event as { type: string; answer?: string }).type === 'done') {
+            finalAnswer = (event as { answer: string }).answer;
+          }
+        }
+        return finalAnswer;
+      },
+      {
+        name: 'AlphaSentry Chat',
+        run_type: 'chain',
+        project_name: langsmithProject,
+        client: langsmithClient,
+      }
+    )
+  : null;
+
 
 export async function POST(req: Request) {
   const { messages, sessionId: clientSessionId } = await req.json();
@@ -121,22 +149,7 @@ export async function POST(req: Request) {
 
   const stream = new ReadableStream({
     async start(controller) {
-      // Create explicit parent trace with RunTree for proper lifecycle management
-      const parentRun = langsmithClient
-        ? new RunTree({
-            name: 'AlphaSentry Chat',
-            run_type: 'chain',
-            inputs: { query },
-            project_name: langsmithProject,
-            client: langsmithClient,
-          })
-        : null;
-
       try {
-        if (parentRun) {
-          await parentRun.postRun();
-        }
-
         const Agent = await getAgent();
         const agent = Agent.create({
           model: process.env.DEXTER_MODEL || 'gpt-5.2',
@@ -163,39 +176,24 @@ export async function POST(req: Request) {
 
         let finalAnswer = '';
 
-        // LangChain automatic tracing handles child traces
-        for await (const event of agent.run(query, chatHistory)) {
-          switch (event.type) {
+        // Event handler for streaming - called by traceable wrapper
+        const handleEvent = async (event: unknown) => {
+          const e = event as { type: string; message?: string; tool?: string; args?: unknown; duration?: number; error?: string; answer?: string };
+          switch (e.type) {
             case 'thinking':
-              sendEvent({
-                type: 'thinking',
-                message: event.message,
-              });
+              sendEvent({ type: 'thinking', message: e.message });
               break;
 
             case 'tool_start':
-              sendEvent({
-                type: 'tool_start',
-                tool: event.tool,
-                args: event.args,
-              });
+              sendEvent({ type: 'tool_start', tool: e.tool, args: e.args });
               break;
 
             case 'tool_end':
-              sendEvent({
-                type: 'tool_end',
-                tool: event.tool,
-                args: event.args,
-                duration: event.duration,
-              });
+              sendEvent({ type: 'tool_end', tool: e.tool, args: e.args, duration: e.duration });
               break;
 
             case 'tool_error':
-              sendEvent({
-                type: 'tool_error',
-                tool: event.tool,
-                error: event.error,
-              });
+              sendEvent({ type: 'tool_error', tool: e.tool, error: e.error });
               break;
 
             case 'answer_start':
@@ -203,25 +201,28 @@ export async function POST(req: Request) {
               break;
 
             case 'done':
-              finalAnswer = event.answer;
+              finalAnswer = e.answer || '';
               // Stream the final answer word by word for natural feel
-              const words = finalAnswer.split(/(\s+)/); // Split but keep whitespace
+              const words = finalAnswer.split(/(\s+)/);
               for (const word of words) {
                 if (word) {
                   sendText(word);
-                  // Vary delay slightly for more natural feel
                   const delay = word.trim().length === 0 ? 5 : 15 + Math.random() * 20;
                   await new Promise((r) => setTimeout(r, delay));
                 }
               }
               break;
           }
-        }
+        };
 
-        // End the parent trace with output
-        if (parentRun) {
-          parentRun.outputs = { answer: finalAnswer };
-          await parentRun.endRun();
+        // Run agent with traceable wrapper (callback pattern gives proper "done" signal)
+        if (runAgentTraced) {
+          finalAnswer = await runAgentTraced(agent, query, chatHistory, handleEvent);
+        } else {
+          // Fallback for when tracing is disabled
+          for await (const event of agent.run(query, chatHistory)) {
+            await handleEvent(event);
+          }
         }
 
         // Save the answer to history for future context
@@ -233,13 +234,6 @@ export async function POST(req: Request) {
       } catch (error) {
         console.error('Agent error:', error);
         const errorMessage = error instanceof Error ? error.message : 'An error occurred';
-
-        // End the parent trace with error
-        if (parentRun) {
-          parentRun.error = errorMessage;
-          await parentRun.endRun();
-        }
-
         controller.enqueue(
           encoder.encode(`data: ${JSON.stringify({ type: 'error', message: errorMessage })}\n\n`)
         );
