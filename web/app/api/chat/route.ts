@@ -2,7 +2,6 @@ import { config } from 'dotenv';
 import { resolve } from 'path';
 import { Redis } from '@upstash/redis';
 import { Client } from 'langsmith';
-import { traceable } from 'langsmith/traceable';
 
 // Load environment variables from parent directory's .env (local dev only)
 config({ path: resolve(process.cwd(), '../.env') });
@@ -89,26 +88,6 @@ async function saveSession(sessionId: string, data: StoredSession): Promise<void
   }
 }
 
-// Wrap agent execution with LangSmith tracing (if configured)
-const runAgentTraced = langsmithApiKey
-  ? traceable(
-      async function* runAgent(
-        agent: { run: (query: string, history: unknown) => AsyncGenerator<unknown> },
-        query: string,
-        chatHistory: unknown
-      ) {
-        for await (const event of agent.run(query, chatHistory)) {
-          yield event;
-        }
-      },
-      {
-        name: 'AlphaSentry Agent',
-        run_type: 'chain',
-        project_name: langsmithProject,
-        client: langsmithClient!,
-      }
-    )
-  : null;
 
 export async function POST(req: Request) {
   const { messages, sessionId: clientSessionId } = await req.json();
@@ -169,12 +148,8 @@ export async function POST(req: Request) {
 
         let finalAnswer = '';
 
-        // Use traced wrapper for LangSmith observability (falls back to untraced if not configured)
-        const agentRunner = runAgentTraced
-          ? runAgentTraced(agent, query, chatHistory)
-          : agent.run(query, chatHistory);
-
-        for await (const event of agentRunner) {
+        // LangChain automatic tracing handles observability via LANGCHAIN_TRACING_V2 env var
+        for await (const event of agent.run(query, chatHistory)) {
           switch (event.type) {
             case 'thinking':
               sendEvent({
