@@ -13,7 +13,10 @@ const langsmithProject = process.env.LANGCHAIN_PROJECT || process.env.LANGSMITH_
 
 // Configure LangSmith - use explicit tracing only (not auto-tracing which hangs with generators)
 if (langsmithApiKey) {
-  process.env.LANGCHAIN_PROJECT = langsmithProject;
+  // LANGSMITH_TRACING enables the traceable wrapper without triggering LangChain auto-tracing
+  process.env.LANGSMITH_TRACING = 'true';
+  process.env.LANGSMITH_API_KEY = langsmithApiKey;
+  process.env.LANGSMITH_PROJECT = langsmithProject;
   console.log(`[LangSmith] Tracing enabled for project: ${langsmithProject}`);
 } else {
   console.log('[LangSmith] Tracing disabled (no API key)');
