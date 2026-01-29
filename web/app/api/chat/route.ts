@@ -1,7 +1,7 @@
 import { config } from 'dotenv';
 import { resolve } from 'path';
 import { Redis } from '@upstash/redis';
-import { Client } from 'langsmith';
+import { Client, RunTree } from 'langsmith';
 
 // Load environment variables from parent directory's .env (local dev only)
 config({ path: resolve(process.cwd(), '../.env') });
@@ -121,7 +121,22 @@ export async function POST(req: Request) {
 
   const stream = new ReadableStream({
     async start(controller) {
+      // Create explicit parent trace with RunTree for proper lifecycle management
+      const parentRun = langsmithClient
+        ? new RunTree({
+            name: 'AlphaSentry Chat',
+            run_type: 'chain',
+            inputs: { query },
+            project_name: langsmithProject,
+            client: langsmithClient,
+          })
+        : null;
+
       try {
+        if (parentRun) {
+          await parentRun.postRun();
+        }
+
         const Agent = await getAgent();
         const agent = Agent.create({
           model: process.env.DEXTER_MODEL || 'gpt-5.2',
@@ -148,7 +163,7 @@ export async function POST(req: Request) {
 
         let finalAnswer = '';
 
-        // LangChain automatic tracing handles observability via LANGCHAIN_TRACING_V2 env var
+        // LangChain automatic tracing handles child traces
         for await (const event of agent.run(query, chatHistory)) {
           switch (event.type) {
             case 'thinking':
@@ -203,6 +218,12 @@ export async function POST(req: Request) {
           }
         }
 
+        // End the parent trace with output
+        if (parentRun) {
+          parentRun.outputs = { answer: finalAnswer };
+          await parentRun.endRun();
+        }
+
         // Save the answer to history for future context
         if (finalAnswer && chatHistory) {
           await chatHistory.saveAnswer(finalAnswer);
@@ -212,6 +233,13 @@ export async function POST(req: Request) {
       } catch (error) {
         console.error('Agent error:', error);
         const errorMessage = error instanceof Error ? error.message : 'An error occurred';
+
+        // End the parent trace with error
+        if (parentRun) {
+          parentRun.error = errorMessage;
+          await parentRun.endRun();
+        }
+
         controller.enqueue(
           encoder.encode(`data: ${JSON.stringify({ type: 'error', message: errorMessage })}\n\n`)
         );
