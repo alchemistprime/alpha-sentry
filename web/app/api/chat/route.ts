@@ -11,23 +11,12 @@ config({ path: resolve(process.cwd(), '../.env') });
 const langsmithApiKey = process.env.LANGCHAIN_API_KEY || process.env.LANGSMITH_API_KEY;
 const langsmithProject = process.env.LANGCHAIN_PROJECT || process.env.LANGSMITH_PROJECT || 'alpha-sentry';
 
-// Debug: Log what env vars are available (redact the actual key)
-console.log('[LangSmith] Config:', {
-  hasLangchainKey: !!process.env.LANGCHAIN_API_KEY,
-  hasLangsmithKey: !!process.env.LANGSMITH_API_KEY,
-  resolvedKey: langsmithApiKey ? `${langsmithApiKey.slice(0, 8)}...` : 'NONE',
-  project: langsmithProject,
-  tracingV2: process.env.LANGCHAIN_TRACING_V2,
-});
-
-// Configure LangSmith - use explicit tracing only (disable auto-tracing to avoid hanging generators)
+// Configure LangSmith - use explicit tracing only (not auto-tracing which hangs with generators)
 if (langsmithApiKey) {
-  // Don't set LANGCHAIN_TRACING_V2 - auto-tracing causes hanging traces with async generators
-  // We use explicit traceable wrapper instead for proper lifecycle management
   process.env.LANGCHAIN_PROJECT = langsmithProject;
-  console.log('[LangSmith] Explicit tracing ENABLED for project:', langsmithProject);
+  console.log(`[LangSmith] Tracing enabled for project: ${langsmithProject}`);
 } else {
-  console.warn('[LangSmith] No API key found (LANGCHAIN_API_KEY or LANGSMITH_API_KEY). Tracing disabled.');
+  console.log('[LangSmith] Tracing disabled (no API key)');
 }
 
 // LangSmith client for flushing traces in serverless environment
@@ -239,13 +228,8 @@ export async function POST(req: Request) {
         );
       } finally {
         // Flush LangSmith traces before serverless function terminates
-        // This ensures all trace data (including prompts) is sent
         if (langsmithClient) {
-          console.log('[LangSmith] Flushing pending trace batches...');
           await langsmithClient.awaitPendingTraceBatches();
-          console.log('[LangSmith] Flush complete.');
-        } else {
-          console.log('[LangSmith] No client configured, skipping flush.');
         }
         controller.close();
       }
