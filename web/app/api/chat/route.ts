@@ -11,12 +11,22 @@ config({ path: resolve(process.cwd(), '../.env') });
 const langsmithApiKey = process.env.LANGCHAIN_API_KEY || process.env.LANGSMITH_API_KEY;
 const langsmithProject = process.env.LANGCHAIN_PROJECT || process.env.LANGSMITH_PROJECT || 'alpha-sentry';
 
+// Debug: Log what env vars are available (redact the actual key)
+console.log('[LangSmith] Config:', {
+  hasLangchainKey: !!process.env.LANGCHAIN_API_KEY,
+  hasLangsmithKey: !!process.env.LANGSMITH_API_KEY,
+  resolvedKey: langsmithApiKey ? `${langsmithApiKey.slice(0, 8)}...` : 'NONE',
+  project: langsmithProject,
+  tracingV2: process.env.LANGCHAIN_TRACING_V2,
+});
+
 // Ensure LangChain tracing is enabled (Vercel injects env vars, but we need to verify they're set)
 // This enables automatic tracing for all LangChain operations
 if (langsmithApiKey) {
   process.env.LANGCHAIN_API_KEY = langsmithApiKey;
   process.env.LANGCHAIN_TRACING_V2 = 'true';
   process.env.LANGCHAIN_PROJECT = langsmithProject;
+  console.log('[LangSmith] Tracing ENABLED for project:', langsmithProject);
 } else {
   console.warn('[LangSmith] No API key found (LANGCHAIN_API_KEY or LANGSMITH_API_KEY). Tracing disabled.');
 }
@@ -234,7 +244,11 @@ export async function POST(req: Request) {
         // Flush LangSmith traces before serverless function terminates
         // This ensures all trace data (including prompts) is sent
         if (langsmithClient) {
+          console.log('[LangSmith] Flushing pending trace batches...');
           await langsmithClient.awaitPendingTraceBatches();
+          console.log('[LangSmith] Flush complete.');
+        } else {
+          console.log('[LangSmith] No client configured, skipping flush.');
         }
         controller.close();
       }
