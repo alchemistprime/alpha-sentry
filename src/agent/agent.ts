@@ -335,7 +335,8 @@ export class Agent {
    * handled during iteration, final answer gets comprehensive context).
    */
   private buildFullContextForAnswer(_query: string, scratchpad: Scratchpad): string {
-    const contexts = scratchpad.getFullContexts();
+    // Use active tool results (respects context clearing)
+    const contexts = scratchpad.getActiveToolResults();
 
     if (contexts.length === 0) {
       return 'No data was gathered.';
