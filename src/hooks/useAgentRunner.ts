@@ -77,6 +77,16 @@ export function useAgentRunner(
         }));
         break;
       }
+
+      case 'tool_progress':
+        updateLastHistoryItem(item => ({
+          events: item.events.map(e =>
+            e.id === item.activeToolId
+              ? { ...e, progressMessage: event.message }
+              : e
+          ),
+        }));
+        break;
         
       case 'tool_end':
         setWorkingState({ status: 'thinking' });
@@ -118,7 +128,9 @@ export function useAgentRunner(
           return {
             answer: doneEvent.answer,
             status: 'complete' as const,
-            duration: item.startTime ? Date.now() - item.startTime : undefined,
+            duration: doneEvent.totalTime,
+            tokenUsage: doneEvent.tokenUsage,
+            tokensPerSecond: doneEvent.tokensPerSecond,
           };
         });
         setWorkingState({ status: 'idle' });

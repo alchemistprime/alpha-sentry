@@ -91,7 +91,7 @@ Answer: "${answerPreview}"
 Generate a brief 1-2 sentence summary of this answer.`;
 
     try {
-      const response = await callLlm(prompt, {
+      const { response } = await callLlm(prompt, {
         systemPrompt: MESSAGE_SUMMARY_SYSTEM_PROMPT,
         model: this.model,
       });
@@ -165,13 +165,13 @@ ${JSON.stringify(messagesInfo, null, 2)}
 Select which previous messages are relevant to understanding or answering the current query.`;
 
     try {
-      const response = await callLlm(prompt, {
+      const { response } = await callLlm(prompt, {
         systemPrompt: MESSAGE_SELECTION_SYSTEM_PROMPT,
         model: this.model,
         outputSchema: SelectedMessagesSchema,
       });
 
-      const selectedIds = (response as { message_ids: number[] }).message_ids || [];
+      const selectedIds = (response as unknown as { message_ids: number[] }).message_ids || [];
 
       const selectedMessages = selectedIds
         .filter((idx) => idx >= 0 && idx < this.messages.length)

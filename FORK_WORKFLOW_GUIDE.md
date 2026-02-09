@@ -82,3 +82,32 @@ git push origin main
 - **You own Alpha Sentry** - you can change anything
 - **You stay connected to Dexter** - when they fix bugs or add features, you can pull those in
 - **Your customizations are safe** - they live in your repo, separate from theirs
+
+## Pro Tips
+
+**To preview what would conflict BEFORE merging:**
+```bash
+git fetch upstream
+git diff HEAD...upstream/main
+```
+
+**If a conflict is too complex, abort and get help:**
+```bash
+git merge --abort  # Undoes the merge, back to before
+```
+
+**Use a visual merge tool:**
+```bash
+git mergetool
+```
+
+**To see what's new in upstream before merging:**
+```bash
+git log upstream/main --oneline -10
+```
+
+**Create a backup branch before pulling updates:**
+```bash
+git checkout -b backup-before-update
+git checkout main  # Switch back to main to do the merge
+```

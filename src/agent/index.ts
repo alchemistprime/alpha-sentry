@@ -10,11 +10,18 @@ export type {
   AgentEvent,
   ThinkingEvent,
   ToolStartEvent,
+  ToolProgressEvent,
   ToolEndEvent,
   ToolErrorEvent,
+  ToolLimitEvent,
   AnswerStartEvent,
-  AnswerChunkEvent,
   DoneEvent,
 } from './types.js';
 
-export type { ToolCallRecord, ToolContext, ScratchpadEntry } from './scratchpad.js';
+export type { 
+  ToolCallRecord, 
+  ToolContext, 
+  ScratchpadEntry,
+  ToolLimitConfig,
+  ToolUsageStatus,
+} from './scratchpad.js';
