@@ -289,7 +289,6 @@ export default function Chat() {
         />
         <div className="flex-1">
           <h1 className="font-semibold text-3xl">AlphaSentry</h1>
-          <p className="text-[10px] text-gray-500">Financial Research Agent</p>
         </div>
         {messages.length > 0 && (
           <button
@@ -305,38 +304,19 @@ export default function Chat() {
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
         {messages.length === 0 && !isLoading && (
           <div className="flex flex-col items-center justify-center h-full text-center text-gray-500">
-            <div className="flex items-center gap-3 mb-6">
+            <div className="flex items-center gap-3 mb-2">
               <Image
                 src="/logo.png"
                 alt="AlphaSentry"
-                width={28}
-                height={28}
-                className="w-7 h-7"
+                width={50}
+                height={50}
+                className="w-[50px] h-[50px]"
               />
-              <span className="text-xl font-semibold text-white">AlphaSentry</span>
+              <span className="text-3xl font-semibold text-white">AlphaSentry</span>
             </div>
-            <p className="max-w-md mb-8 text-gray-400">
-              Ask me anything about financial markets, company fundamentals,
-              stock analysis, or economic trends.
+            <p className="text-[9px] text-gray-400">
+              Your AI assistant for deep financial research.
             </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm max-w-2xl">
-              <SuggestionButton
-                text="Analyze cash flow quality vs reported earnings for [Company] - are there red flags?"
-                onClick={setInput}
-              />
-              <SuggestionButton
-                text="Compare days sales outstanding trends vs peers for [Company]"
-                onClick={setInput}
-              />
-              <SuggestionButton
-                text="Compare [Company]'s accounts receivable growth to revenue growth over 3 years"
-                onClick={setInput}
-              />
-              <SuggestionButton
-                text="Analyze insider selling patterns and executive departures at [Company] over the past 12 months"
-                onClick={setInput}
-              />
-            </div>
           </div>
         )}
 
