@@ -3,7 +3,7 @@ import { getSetting, setSetting } from '../utils/config.js';
 import { getProviderDisplayName, checkApiKeyExistsForProvider, saveApiKeyForProvider } from '../utils/env.js';
 import { getModelsForProvider, getDefaultModelForProvider, type Model } from '../components/ModelSelector.js';
 import { getOllamaModels } from '../utils/ollama.js';
-import { DEFAULT_MODEL, DEFAULT_PROVIDER } from '../model/llm.js';
+import { DEFAULT_MODEL, DEFAULT_PROVIDER } from '../mastra/model-router.js';
 import { InMemoryChatHistory } from '../utils/in-memory-chat-history.js';
 
 // ============================================================================

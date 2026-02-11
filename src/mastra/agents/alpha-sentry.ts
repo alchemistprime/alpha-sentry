@@ -18,12 +18,7 @@ import {
   BROWSER_DESCRIPTION,
 } from '../../tools/descriptions/index.js';
 
-function resolveMastraModel(): string {
-  const provider = process.env.DEXTER_MODEL_PROVIDER?.trim() || 'openai';
-  const model = process.env.DEXTER_MODEL?.trim() || 'gpt-5.2';
-  if (model.includes('/')) return model;
-  return `${provider}/${model}`;
-}
+import { toMastraModelString, DEFAULT_PROVIDER, DEFAULT_MODEL } from '../model-router.js';
 
 function buildSkillsSection(): string {
   const skills = discoverSkills();
@@ -143,10 +138,18 @@ function getAgentTools(): Record<string, any> {
   return tools;
 }
 
-export const alphaSentryAgent = new Agent({
-  id: 'alpha-sentry',
-  name: 'AlphaSentry',
-  instructions: buildInstructions(),
-  model: resolveMastraModel(),
-  tools: getAgentTools(),
-});
+export function createAlphaSentryAgent(provider?: string, model?: string) {
+  const resolvedProvider = provider || process.env.DEXTER_MODEL_PROVIDER?.trim() || DEFAULT_PROVIDER;
+  const resolvedModel = model || process.env.DEXTER_MODEL?.trim() || DEFAULT_MODEL;
+  const modelString = toMastraModelString(resolvedProvider, resolvedModel);
+
+  return new Agent({
+    id: 'alpha-sentry',
+    name: 'AlphaSentry',
+    instructions: buildInstructions(),
+    model: modelString,
+    tools: getAgentTools(),
+  });
+}
+
+export const alphaSentryAgent = createAlphaSentryAgent();

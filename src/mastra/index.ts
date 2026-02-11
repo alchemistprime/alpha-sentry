@@ -7,4 +7,4 @@ export const mastra = new Mastra({
   },
 });
 
-export { alphaSentryAgent };
+export { alphaSentryAgent, createAlphaSentryAgent } from './agents/alpha-sentry.js';
