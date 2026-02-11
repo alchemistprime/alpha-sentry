@@ -1,4 +1,4 @@
-import { DynamicStructuredTool } from '@langchain/core/tools';
+import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import { callApi } from './api.js';
 import { formatToolResult } from '../types.js';
@@ -15,11 +15,11 @@ const AnalystEstimatesInputSchema = z.object({
     .describe("The period for the estimates, either 'annual' or 'quarterly'."),
 });
 
-export const getAnalystEstimates = new DynamicStructuredTool({
-  name: 'get_analyst_estimates',
+export const getAnalystEstimates = createTool({
+  id: 'get_analyst_estimates',
   description: `Retrieves analyst estimates for a given company ticker, including metrics like estimated EPS. Useful for understanding consensus expectations, assessing future growth prospects, and performing valuation analysis.`,
-  schema: AnalystEstimatesInputSchema,
-  func: async (input) => {
+  inputSchema: AnalystEstimatesInputSchema,
+  execute: async (input) => {
     const params = {
       ticker: input.ticker,
       period: input.period,
@@ -28,4 +28,3 @@ export const getAnalystEstimates = new DynamicStructuredTool({
     return formatToolResult(data.analyst_estimates || [], [url]);
   },
 });
-

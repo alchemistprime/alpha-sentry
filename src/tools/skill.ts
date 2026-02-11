@@ -1,4 +1,4 @@
-import { DynamicStructuredTool } from '@langchain/core/tools';
+import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import { getSkill, discoverSkills } from '../skills/index.js';
 
@@ -33,26 +33,26 @@ Execute a skill to get specialized instructions for complex tasks.
  * Skill invocation tool.
  * Loads and returns skill instructions for the agent to follow.
  */
-export const skillTool = new DynamicStructuredTool({
-  name: 'skill',
+export const skillTool = createTool({
+  id: 'skill',
   description: 'Execute a skill to get specialized instructions for a task. Returns instructions to follow.',
-  schema: z.object({
+  inputSchema: z.object({
     skill: z.string().describe('Name of the skill to invoke (e.g., "dcf")'),
     args: z.string().optional().describe('Optional arguments for the skill (e.g., ticker symbol)'),
   }),
-  func: async ({ skill, args }) => {
-    const skillDef = getSkill(skill);
+  execute: async (input) => {
+    const skillDef = getSkill(input.skill);
 
     if (!skillDef) {
       const available = discoverSkills().map((s) => s.name).join(', ');
-      return `Error: Skill "${skill}" not found. Available skills: ${available || 'none'}`;
+      return `Error: Skill "${input.skill}" not found. Available skills: ${available || 'none'}`;
     }
 
     // Return instructions with optional args context
     let result = `## Skill: ${skillDef.name}\n\n`;
     
-    if (args) {
-      result += `**Arguments provided:** ${args}\n\n`;
+    if (input.args) {
+      result += `**Arguments provided:** ${input.args}\n\n`;
     }
     
     result += skillDef.instructions;

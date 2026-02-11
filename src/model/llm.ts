@@ -137,7 +137,7 @@ interface CallLlmOptions {
   model?: string;
   systemPrompt?: string;
   outputSchema?: z.ZodType<unknown>;
-  tools?: StructuredToolInterface[];
+  tools?: unknown[];
   signal?: AbortSignal;
 }
 
@@ -206,7 +206,7 @@ export async function callLlm(prompt: string, options: CallLlmOptions = {}): Pro
   if (outputSchema) {
     runnable = llm.withStructuredOutput(outputSchema, { strict: false });
   } else if (tools && tools.length > 0 && llm.bindTools) {
-    runnable = llm.bindTools(tools);
+    runnable = llm.bindTools(tools as Parameters<typeof llm.bindTools>[0]);
   }
 
   const invokeOpts = signal ? { signal } : undefined;

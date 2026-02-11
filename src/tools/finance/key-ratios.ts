@@ -1,4 +1,4 @@
-import { DynamicStructuredTool } from '@langchain/core/tools';
+import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import { callApi } from './api.js';
 import { formatToolResult } from '../types.js';
@@ -11,11 +11,11 @@ const KeyRatiosSnapshotInputSchema = z.object({
     ),
 });
 
-export const getKeyRatiosSnapshot = new DynamicStructuredTool({
-  name: 'get_key_ratios_snapshot',
+export const getKeyRatiosSnapshot = createTool({
+  id: 'get_key_ratios_snapshot',
   description: `Fetches a snapshot of the most current key ratios for a company, including key indicators like market capitalization, P/E ratio, and dividend yield. Useful for a quick overview of a company's financial health.`,
-  schema: KeyRatiosSnapshotInputSchema,
-  func: async (input) => {
+  inputSchema: KeyRatiosSnapshotInputSchema,
+  execute: async (input) => {
     const params = { ticker: input.ticker };
     const { data, url } = await callApi('/financial-metrics/snapshot/', params);
     return formatToolResult(data.snapshot || {}, [url]);
@@ -64,11 +64,11 @@ const KeyRatiosInputSchema = z.object({
     ),
 });
 
-export const getKeyRatios = new DynamicStructuredTool({
-  name: 'get_key_ratios',
+export const getKeyRatios = createTool({
+  id: 'get_key_ratios',
   description: `Retrieves historical key ratios for a company, such as P/E ratio, revenue per share, and enterprise value, over a specified period. Useful for trend analysis and historical performance evaluation.`,
-  schema: KeyRatiosInputSchema,
-  func: async (input) => {
+  inputSchema: KeyRatiosInputSchema,
+  execute: async (input) => {
     const params: Record<string, string | number | undefined> = {
       ticker: input.ticker,
       period: input.period,

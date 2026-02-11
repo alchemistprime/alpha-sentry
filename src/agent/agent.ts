@@ -1,8 +1,9 @@
 import { AIMessage } from '@langchain/core/messages';
 import { StructuredToolInterface } from '@langchain/core/tools';
+import type { Tool } from '@mastra/core/tools';
 import { callLlm } from '../model/llm.js';
 import { Scratchpad, type ToolContext } from './scratchpad.js';
-import { getTools } from '../tools/registry.js';
+import { getTools, type AnyTool } from '../tools/registry.js';
 import { buildSystemPrompt, buildIterationPrompt, buildFinalAnswerPrompt } from '../agent/prompts.js';
 import { extractTextContent, hasToolCalls } from '../utils/ai-message.js';
 import { InMemoryChatHistory } from '../utils/in-memory-chat-history.js';
@@ -22,21 +23,21 @@ export class Agent {
   private readonly model: string;
   private readonly modelProvider: string;
   private readonly maxIterations: number;
-  private readonly tools: StructuredToolInterface[];
-  private readonly toolMap: Map<string, StructuredToolInterface>;
+  private readonly tools: AnyTool[];
+  private readonly toolMap: Map<string, AnyTool>;
   private readonly systemPrompt: string;
   private readonly signal?: AbortSignal;
 
   private constructor(
     config: AgentConfig,
-    tools: StructuredToolInterface[],
+    tools: AnyTool[],
     systemPrompt: string
   ) {
     this.model = config.model ?? 'gpt-5.2';
     this.modelProvider = config.modelProvider ?? 'openai';
     this.maxIterations = config.maxIterations ?? DEFAULT_MAX_ITERATIONS;
     this.tools = tools;
-    this.toolMap = new Map(tools.map(t => [t.name, t]));
+    this.toolMap = new Map(tools.map(t => ['name' in t ? t.name : t.id, t]));
     this.systemPrompt = systemPrompt;
     this.signal = config.signal;
   }
@@ -258,10 +259,15 @@ export class Agent {
         ...(this.signal ? { signal: this.signal } : {}),
       };
 
+      const isLangChainTool = (t: AnyTool): t is StructuredToolInterface => 'invoke' in t;
+
       // Launch tool invocation -- closes the channel when it settles
-      const toolPromise = tool.invoke(toolArgs, config).then(
-        (raw) => { channel.close(); return raw; },
-        (err) => { channel.close(); throw err; },
+      const toolPromise = (isLangChainTool(tool)
+        ? tool.invoke(toolArgs, config)
+        : tool.execute!(toolArgs as any, {} as any)
+      ).then(
+        (raw: unknown) => { channel.close(); return raw; },
+        (err: unknown) => { channel.close(); throw err; },
       );
 
       // Drain progress events in real-time as the tool executes

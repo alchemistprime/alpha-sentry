@@ -1,4 +1,4 @@
-import { DynamicStructuredTool } from '@langchain/core/tools';
+import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import { callApi } from './api.js';
 import { formatToolResult } from '../types.js';
@@ -18,11 +18,11 @@ const NewsInputSchema = z.object({
     .describe('The number of news articles to retrieve. Max is 100.'),
 });
 
-export const getNews = new DynamicStructuredTool({
-  name: 'get_news',
+export const getNews = createTool({
+  id: 'get_news',
   description: `Retrieves recent news articles for a given company ticker, covering financial announcements, market trends, and other significant events. Useful for staying up-to-date with market-moving information and investor sentiment.`,
-  schema: NewsInputSchema,
-  func: async (input) => {
+  inputSchema: NewsInputSchema,
+  execute: async (input) => {
     const params: Record<string, string | number | undefined> = {
       ticker: input.ticker,
       limit: input.limit,

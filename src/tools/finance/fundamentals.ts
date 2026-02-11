@@ -1,4 +1,4 @@
-import { DynamicStructuredTool } from '@langchain/core/tools';
+import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import { callApi } from './api.js';
 import { formatToolResult } from '../types.js';
@@ -54,47 +54,46 @@ function createParams(input: z.infer<typeof FinancialStatementsInputSchema>): Re
   };
 }
 
-export const getIncomeStatements = new DynamicStructuredTool({
-  name: 'get_income_statements',
+export const getIncomeStatements = createTool({
+  id: 'get_income_statements',
   description: `Fetches a company's income statements, detailing its revenues, expenses, net income, etc. over a reporting period. Useful for evaluating a company's profitability and operational efficiency.`,
-  schema: FinancialStatementsInputSchema,
-  func: async (input) => {
+  inputSchema: FinancialStatementsInputSchema,
+  execute: async (input) => {
     const params = createParams(input);
     const { data, url } = await callApi('/financials/income-statements/', params);
     return formatToolResult(data.income_statements || {}, [url]);
   },
 });
 
-export const getBalanceSheets = new DynamicStructuredTool({
-  name: 'get_balance_sheets',
+export const getBalanceSheets = createTool({
+  id: 'get_balance_sheets',
   description: `Retrieves a company's balance sheets, providing a snapshot of its assets, liabilities, shareholders' equity, etc. at a specific point in time. Useful for assessing a company's financial position.`,
-  schema: FinancialStatementsInputSchema,
-  func: async (input) => {
+  inputSchema: FinancialStatementsInputSchema,
+  execute: async (input) => {
     const params = createParams(input);
     const { data, url } = await callApi('/financials/balance-sheets/', params);
     return formatToolResult(data.balance_sheets || {}, [url]);
   },
 });
 
-export const getCashFlowStatements = new DynamicStructuredTool({
-  name: 'get_cash_flow_statements',
+export const getCashFlowStatements = createTool({
+  id: 'get_cash_flow_statements',
   description: `Retrieves a company's cash flow statements, showing how cash is generated and used across operating, investing, and financing activities. Useful for understanding a company's liquidity and solvency.`,
-  schema: FinancialStatementsInputSchema,
-  func: async (input) => {
+  inputSchema: FinancialStatementsInputSchema,
+  execute: async (input) => {
     const params = createParams(input);
     const { data, url } = await callApi('/financials/cash-flow-statements/', params);
     return formatToolResult(data.cash_flow_statements || {}, [url]);
   },
 });
 
-export const getAllFinancialStatements = new DynamicStructuredTool({
-  name: 'get_all_financial_statements',
+export const getAllFinancialStatements = createTool({
+  id: 'get_all_financial_statements',
   description: `Retrieves all three financial statements (income statements, balance sheets, and cash flow statements) for a company in a single API call. This is more efficient than calling each statement type separately when you need all three for comprehensive financial analysis.`,
-  schema: FinancialStatementsInputSchema,
-  func: async (input) => {
+  inputSchema: FinancialStatementsInputSchema,
+  execute: async (input) => {
     const params = createParams(input);
     const { data, url } = await callApi('/financials/', params);
     return formatToolResult(data.financials || {}, [url]);
   },
 });
-

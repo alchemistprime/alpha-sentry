@@ -1,4 +1,4 @@
-import { DynamicStructuredTool } from '@langchain/core/tools';
+import { createTool } from '@mastra/core/tools';
 import { chromium, Browser, Page } from 'playwright';
 import { z } from 'zod';
 import { formatToolResult } from '../types.js';
@@ -150,16 +150,16 @@ const actRequestSchema = z.object({
   timeMs: z.number().optional().describe('Wait time in milliseconds'),
 });
 
-export const browserTool = new DynamicStructuredTool({
-  name: 'browser',
+export const browserTool = createTool({
+  id: 'browser',
   description: 'Navigate websites, read content, and interact with pages. Use for accessing company websites, earnings reports, and dynamic content.',
-  schema: z.object({
+  inputSchema: z.object({
     action: z.enum(['navigate', 'open', 'snapshot', 'act', 'read', 'close']).describe('The browser action to perform'),
     url: z.string().optional().describe('URL for navigate action'),
     maxChars: z.number().optional().describe('Max characters for snapshot (default 50000)'),
     request: actRequestSchema.optional().describe('Request object for act action'),
   }),
-  func: async ({ action, url, maxChars, request }) => {
+  execute: async ({ action, url, maxChars, request }) => {
     try {
       switch (action) {
         case 'navigate': {

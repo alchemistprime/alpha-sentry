@@ -1,4 +1,5 @@
 import { StructuredToolInterface } from '@langchain/core/tools';
+import type { Tool } from '@mastra/core/tools';
 import { createFinancialSearch, createFinancialMetrics, createReadFilings } from './finance/index.js';
 import { exaSearch, tavilySearch } from './search/index.js';
 import { skillTool, SKILL_TOOL_DESCRIPTION } from './skill.js';
@@ -14,10 +15,12 @@ export interface RegisteredTool {
   /** Tool name (must match the tool's name property) */
   name: string;
   /** The actual tool instance */
-  tool: StructuredToolInterface;
+  tool: AnyTool;
   /** Rich description for system prompt (includes when to use, when not to use, etc.) */
   description: string;
 }
+
+export type AnyTool = StructuredToolInterface | Tool<any, any, any, any, any, any, any>;
 
 /**
  * Get all registered tools with their descriptions.
@@ -89,7 +92,7 @@ export function getToolRegistry(model: string): RegisteredTool[] {
  * @param model - The model name
  * @returns Array of tool instances
  */
-export function getTools(model: string): StructuredToolInterface[] {
+export function getTools(model: string): AnyTool[] {
   return getToolRegistry(model).map((t) => t.tool);
 }
 

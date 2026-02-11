@@ -1,4 +1,4 @@
-import { DynamicStructuredTool } from '@langchain/core/tools';
+import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import { callApi } from './api.js';
 import { formatToolResult } from '../types.js';
@@ -44,11 +44,11 @@ const FilingsInputSchema = z.object({
     ),
 });
 
-export const getFilings = new DynamicStructuredTool({
-  name: 'get_filings',
+export const getFilings = createTool({
+  id: 'get_filings',
   description: `Retrieves metadata for SEC filings for a company. Returns accession numbers, filing types, and document URLs. This tool ONLY returns metadata - it does NOT return the actual text content from filings. To retrieve text content, use the specific filing items tools: get_10K_filing_items, get_10Q_filing_items, or get_8K_filing_items.`,
-  schema: FilingsInputSchema,
-  func: async (input) => {
+  inputSchema: FilingsInputSchema,
+  execute: async (input) => {
     const params: Record<string, string | number | undefined> = {
       ticker: input.ticker,
       limit: input.limit,
@@ -74,11 +74,11 @@ const Filing10KItemsInputSchema = z.object({
     ),
 });
 
-export const get10KFilingItems = new DynamicStructuredTool({
-  name: 'get_10K_filing_items',
+export const get10KFilingItems = createTool({
+  id: 'get_10K_filing_items',
   description: `Retrieves sections (items) from a company's 10-K annual report. Specify items to retrieve only specific sections, or omit to get all. Common items: Item-1 (Business), Item-1A (Risk Factors), Item-7 (MD&A), Item-8 (Financial Statements). The accession_number can be retrieved using the get_filings tool.`,
-  schema: Filing10KItemsInputSchema,
-  func: async (input) => {
+  inputSchema: Filing10KItemsInputSchema,
+  execute: async (input) => {
     const params: Record<string, string | string[] | undefined> = {
       ticker: input.ticker.toUpperCase(),
       filing_type: '10-K',
@@ -106,11 +106,11 @@ const Filing10QItemsInputSchema = z.object({
     ),
 });
 
-export const get10QFilingItems = new DynamicStructuredTool({
-  name: 'get_10Q_filing_items',
+export const get10QFilingItems = createTool({
+  id: 'get_10Q_filing_items',
   description: `Retrieves sections (items) from a company's 10-Q quarterly report. Specify items to retrieve only specific sections, or omit to get all. Common items: Part-1,Item-1 (Financial Statements), Part-1,Item-2 (MD&A), Part-1,Item-3 (Market Risk), Part-2,Item-1A (Risk Factors). The accession_number can be retrieved using the get_filings tool.`,
-  schema: Filing10QItemsInputSchema,
-  func: async (input) => {
+  inputSchema: Filing10QItemsInputSchema,
+  execute: async (input) => {
     const params: Record<string, string | string[] | undefined> = {
       ticker: input.ticker.toUpperCase(),
       filing_type: '10-Q',
@@ -132,11 +132,11 @@ const Filing8KItemsInputSchema = z.object({
     ),
 });
 
-export const get8KFilingItems = new DynamicStructuredTool({
-  name: 'get_8K_filing_items',
+export const get8KFilingItems = createTool({
+  id: 'get_8K_filing_items',
   description: `Retrieves specific sections (items) from a company's 8-K current report. 8-K filings report material events such as acquisitions, financial results, management changes, and other significant corporate events. The accession_number parameter can be retrieved using the get_filings tool by filtering for 8-K filings.`,
-  schema: Filing8KItemsInputSchema,
-  func: async (input) => {
+  inputSchema: Filing8KItemsInputSchema,
+  execute: async (input) => {
     const params: Record<string, string | undefined> = {
       ticker: input.ticker.toUpperCase(),
       filing_type: '8-K',
@@ -147,4 +147,3 @@ export const get8KFilingItems = new DynamicStructuredTool({
     return formatToolResult(data, [url]);
   },
 });
-
