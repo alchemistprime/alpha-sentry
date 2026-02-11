@@ -101,6 +101,14 @@ export interface AnswerStartEvent {
 }
 
 /**
+ * Incremental text chunk from the LLM response
+ */
+export interface TextDeltaEvent {
+  type: 'text_delta';
+  delta: string;
+}
+
+/**
  * Token usage statistics
  */
 export interface TokenUsage {
@@ -134,4 +142,5 @@ export type AgentEvent =
   | ToolLimitEvent
   | ContextClearedEvent
   | AnswerStartEvent
+  | TextDeltaEvent
   | DoneEvent;

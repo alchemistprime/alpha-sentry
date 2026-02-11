@@ -19,6 +19,7 @@ import {
 } from '../../tools/descriptions/index.js';
 
 import { toMastraModelString, DEFAULT_PROVIDER, DEFAULT_MODEL } from '../model-router.js';
+import { memory } from '../memory.js';
 
 function buildSkillsSection(): string {
   const skills = discoverSkills();
@@ -149,6 +150,7 @@ export function createAlphaSentryAgent(provider?: string, model?: string) {
     instructions: buildInstructions(),
     model: modelString,
     tools: getAgentTools(),
+    memory,
   });
 }
 

@@ -36,18 +36,22 @@ describe('bridgeEvents', () => {
     expect((events[1] as any).duration).toBeGreaterThanOrEqual(0);
   });
 
-  it('emits answer_start on first text-delta and only once', async () => {
+  it('emits answer_start on first text-delta and yields text_delta events', async () => {
     const stream = createMockStream([
-      { type: 'text-delta' },
-      { type: 'text-delta' },
+      { type: 'text-delta', textDelta: 'Hello' },
+      { type: 'text-delta', textDelta: ' world' },
       { type: 'text-start' },
     ]);
 
     const events = await collectEvents(bridgeEvents(stream));
     const answerStarts = events.filter((e: any) => e.type === 'answer_start');
+    const textDeltas = events.filter((e: any) => e.type === 'text_delta');
 
     expect(answerStarts).toHaveLength(1);
     expect(events[0]).toEqual({ type: 'answer_start' });
+    expect(textDeltas).toHaveLength(2);
+    expect(textDeltas[0]).toEqual({ type: 'text_delta', delta: 'Hello' });
+    expect(textDeltas[1]).toEqual({ type: 'text_delta', delta: ' world' });
   });
 
   it('emits answer_start on text-start chunk', async () => {
@@ -57,6 +61,24 @@ describe('bridgeEvents', () => {
 
     const events = await collectEvents(bridgeEvents(stream));
     expect(events[0]).toEqual({ type: 'answer_start' });
+  });
+
+  it('filters out internal memory tool calls', async () => {
+    const stream = createMockStream([
+      { type: 'tool-call', toolCallId: 'tc1', toolName: 'updateWorkingMemory', args: { memory: '# Context' } },
+      { type: 'tool-result', toolCallId: 'tc1', toolName: 'updateWorkingMemory', args: { memory: '# Context' }, result: 'ok' },
+      { type: 'tool-call', toolCallId: 'tc2', toolName: 'web_search', args: { q: 'test' } },
+      { type: 'tool-result', toolCallId: 'tc2', toolName: 'web_search', args: { q: 'test' }, result: 'data' },
+    ]);
+
+    const events = await collectEvents(bridgeEvents(stream));
+    const toolStarts = events.filter((e: any) => e.type === 'tool_start');
+    const toolEnds = events.filter((e: any) => e.type === 'tool_end');
+
+    expect(toolStarts).toHaveLength(1);
+    expect((toolStarts[0] as any).tool).toBe('web_search');
+    expect(toolEnds).toHaveLength(1);
+    expect((toolEnds[0] as any).tool).toBe('web_search');
   });
 
   it('done event includes correct answer, toolCalls, and token usage', async () => {

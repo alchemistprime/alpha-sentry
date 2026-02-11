@@ -8,9 +8,16 @@ interface StreamChunk {
     toolName?: string;
     args?: Record<string, unknown>;
     result?: unknown;
+    text?: string;
+    textDelta?: string;
     [key: string]: unknown;
   };
 }
+
+const INTERNAL_TOOLS = new Set([
+  'updateWorkingMemory',
+  'update_working_memory',
+]);
 
 export interface BridgeOptions {
   onAudit?: (entry: AuditEntry) => Promise<void>;
@@ -28,9 +35,12 @@ export async function* bridgeEvents(
   const startTime = Date.now();
   const toolCalls: Array<{ tool: string; args: Record<string, unknown>; result: string }> = [];
   const toolStartTimes = new Map<string, number>();
+  const internalCallIds = new Set<string>();
   let answerStartEmitted = false;
 
   for await (const chunk of stream.fullStream as AsyncIterable<StreamChunk>) {
+    const p = chunk.payload ?? (chunk as any);
+
     switch (chunk.type) {
       case 'step-start': {
         yield { type: 'thinking', message: 'Processing...' };
@@ -38,24 +48,36 @@ export async function* bridgeEvents(
       }
 
       case 'tool-call': {
-        const toolCallId = chunk.payload.toolCallId ?? '';
-        const toolName = chunk.payload.toolName ?? '';
-        const args = (chunk.payload.args ?? {}) as Record<string, unknown>;
+        const toolCallId = p.toolCallId ?? '';
+        const toolName = p.toolName ?? '';
+        const args = (p.args ?? {}) as Record<string, unknown>;
         toolStartTimes.set(toolCallId, Date.now());
+
+        if (INTERNAL_TOOLS.has(toolName)) {
+          internalCallIds.add(toolCallId);
+          break;
+        }
+
         yield { type: 'tool_start', tool: toolName, args };
         break;
       }
 
       case 'tool-result': {
-        const toolCallId = chunk.payload.toolCallId ?? '';
-        const toolName = chunk.payload.toolName ?? '';
-        const args = (chunk.payload.args ?? {}) as Record<string, unknown>;
-        const result = chunk.payload.result;
+        const toolCallId = p.toolCallId ?? '';
+        const toolName = p.toolName ?? '';
+        const args = (p.args ?? {}) as Record<string, unknown>;
+        const result = p.result;
         const toolStart = toolStartTimes.get(toolCallId) ?? Date.now();
         const duration = Date.now() - toolStart;
         toolStartTimes.delete(toolCallId);
 
         const resultStr = typeof result === 'string' ? result : JSON.stringify(result);
+
+        if (internalCallIds.has(toolCallId)) {
+          internalCallIds.delete(toolCallId);
+          break;
+        }
+
         toolCalls.push({ tool: toolName, args, result: resultStr });
         yield { type: 'tool_end', tool: toolName, args, result: resultStr, duration };
 
@@ -85,6 +107,10 @@ export async function* bridgeEvents(
         if (!answerStartEmitted) {
           answerStartEmitted = true;
           yield { type: 'answer_start' };
+        }
+        const delta = p.text ?? p.textDelta;
+        if (chunk.type === 'text-delta' && delta) {
+          yield { type: 'text_delta', delta };
         }
         break;
       }

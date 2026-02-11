@@ -124,7 +124,11 @@ export function WorkingIndicator({ state }: WorkingIndicatorProps) {
         <Spinner type="dots" />
       </Text>
       <Text color={colors.primary}> </Text>
-      <ShineText text={statusWord} color={colors.primary} shineColor={colors.primaryLight} />
+      {state.status === 'answering' ? (
+        <Text color={colors.primary}>{statusWord}</Text>
+      ) : (
+        <ShineText text={statusWord} color={colors.primary} shineColor={colors.primaryLight} />
+      )}
       <Text color={colors.muted}> (</Text>
       <Text color={colors.muted} bold>esc</Text>
       <Text color={colors.muted}>{suffixEnd}</Text>

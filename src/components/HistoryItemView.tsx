@@ -63,11 +63,12 @@ export interface HistoryItem {
 
 interface HistoryItemViewProps {
   item: HistoryItem;
+  streamingAnswer?: string;
 }
 
-export function HistoryItemView({ item }: HistoryItemViewProps) {
-  // Add spacing after completed items, but not during processing
+export const HistoryItemView = React.memo(function HistoryItemView({ item, streamingAnswer }: HistoryItemViewProps) {
   const isComplete = item.status === 'complete' || item.status === 'error' || item.status === 'interrupted';
+  const displayAnswer = item.answer || (streamingAnswer ? streamingAnswer : '');
   
   return (
     <Box flexDirection="column" marginBottom={isComplete ? 1 : 0}>
@@ -90,10 +91,10 @@ export function HistoryItemView({ item }: HistoryItemViewProps) {
         activeToolId={item.status === 'processing' ? item.activeToolId : undefined}
       />
       
-      {/* Answer - only show if we have one */}
-      {item.answer && (
+      {/* Answer - show streaming text or final answer */}
+      {displayAnswer && (
         <Box>
-          <AnswerBox text={item.answer} />
+          <AnswerBox text={displayAnswer} isStreaming={!!streamingAnswer && !item.answer} />
         </Box>
       )}
       
@@ -105,4 +106,4 @@ export function HistoryItemView({ item }: HistoryItemViewProps) {
       )}
     </Box>
   );
-}
+});

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Box, Text } from 'ink';
 import Spinner from 'ink-spinner';
 import { colors } from '../theme.js';
@@ -426,8 +426,8 @@ interface EventListViewProps {
 /**
  * Renders a list of agent events with browser events consolidated into sessions
  */
-export function EventListView({ events, activeToolId }: EventListViewProps) {
-  const groupedEvents = groupBrowserEvents(events, activeToolId);
+export const EventListView = React.memo(function EventListView({ events, activeToolId }: EventListViewProps) {
+  const groupedEvents = useMemo(() => groupBrowserEvents(events, activeToolId), [events, activeToolId]);
 
   return (
     <Box flexDirection="column" gap={0} marginTop={1}>
@@ -481,4 +481,4 @@ export function EventListView({ events, activeToolId }: EventListViewProps) {
       })}
     </Box>
   );
-}
+});

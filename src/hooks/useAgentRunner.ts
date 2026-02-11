@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
+import { randomUUID } from 'crypto';
 import { bridgeEvents } from '../mastra/event-bridge.js';
 import { appendAudit } from '../mastra/audit-log.js';
 import { createAlphaSentryAgent } from '../mastra/agents/alpha-sentry.js';
@@ -19,6 +20,7 @@ export interface UseAgentRunnerResult {
   workingState: WorkingState;
   error: string | null;
   isProcessing: boolean;
+  streamingAnswer: string;
   
   // Actions
   runQuery: (query: string) => Promise<RunQueryResult | undefined>;
@@ -32,13 +34,18 @@ export interface UseAgentRunnerResult {
 
 export function useAgentRunner(
   agentConfig: AgentConfig,
-  _inMemoryChatHistoryRef?: unknown,
 ): UseAgentRunnerResult {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [workingState, setWorkingState] = useState<WorkingState>({ status: 'idle' });
   const [error, setError] = useState<string | null>(null);
+  const [streamingAnswer, setStreamingAnswer] = useState<string>('');
   
   const abortControllerRef = useRef<AbortController | null>(null);
+  const sessionIdRef = useRef<string>(randomUUID());
+  const textBufferRef = useRef<string>('');
+  const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const progressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latestProgressRef = useRef<string>('');
   
   // Helper to update the last (processing) history item
   const updateLastHistoryItem = useCallback((
@@ -51,6 +58,30 @@ export function useAgentRunner(
     });
   }, []);
   
+  const flushTextBuffer = useCallback(() => {
+    if (textBufferRef.current) {
+      const buffered = textBufferRef.current;
+      textBufferRef.current = '';
+      setStreamingAnswer(prev => prev + buffered);
+    }
+    flushTimerRef.current = null;
+  }, []);
+
+  const flushProgress = useCallback(() => {
+    if (latestProgressRef.current) {
+      const msg = latestProgressRef.current;
+      latestProgressRef.current = '';
+      updateLastHistoryItem(item => ({
+        events: item.events.map(e =>
+          e.id === item.activeToolId
+            ? { ...e, progressMessage: msg }
+            : e
+        ),
+      }));
+    }
+    progressTimerRef.current = null;
+  }, [updateLastHistoryItem]);
+
   // Handle agent events
   const handleEvent = useCallback((event: AgentEvent) => {
     switch (event.type) {
@@ -80,16 +111,18 @@ export function useAgentRunner(
       }
 
       case 'tool_progress':
-        updateLastHistoryItem(item => ({
-          events: item.events.map(e =>
-            e.id === item.activeToolId
-              ? { ...e, progressMessage: event.message }
-              : e
-          ),
-        }));
+        latestProgressRef.current = event.message;
+        if (!progressTimerRef.current) {
+          progressTimerRef.current = setTimeout(flushProgress, 200);
+        }
         break;
         
       case 'tool_end':
+        if (progressTimerRef.current) {
+          clearTimeout(progressTimerRef.current);
+          progressTimerRef.current = null;
+        }
+        latestProgressRef.current = '';
         setWorkingState({ status: 'thinking' });
         updateLastHistoryItem(item => ({
           activeToolId: undefined,
@@ -102,6 +135,11 @@ export function useAgentRunner(
         break;
         
       case 'tool_error':
+        if (progressTimerRef.current) {
+          clearTimeout(progressTimerRef.current);
+          progressTimerRef.current = null;
+        }
+        latestProgressRef.current = '';
         setWorkingState({ status: 'thinking' });
         updateLastHistoryItem(item => ({
           activeToolId: undefined,
@@ -116,8 +154,21 @@ export function useAgentRunner(
       case 'answer_start':
         setWorkingState({ status: 'answering', startTime: Date.now() });
         break;
+
+      case 'text_delta':
+        textBufferRef.current += event.delta;
+        if (!flushTimerRef.current) {
+          flushTimerRef.current = setTimeout(flushTextBuffer, 66);
+        }
+        break;
         
       case 'done': {
+        if (flushTimerRef.current) {
+          clearTimeout(flushTimerRef.current);
+          flushTimerRef.current = null;
+        }
+        textBufferRef.current = '';
+        setStreamingAnswer('');
         const doneEvent = event as DoneEvent;
         updateLastHistoryItem(() => ({
           answer: doneEvent.answer,
@@ -130,7 +181,7 @@ export function useAgentRunner(
         break;
       }
     }
-  }, [updateLastHistoryItem]);
+  }, [updateLastHistoryItem, flushTextBuffer, flushProgress]);
   
   // Run a query through the Mastra agent
   const runQuery = useCallback(async (query: string): Promise<RunQueryResult | undefined> => {
@@ -139,6 +190,7 @@ export function useAgentRunner(
     
     let finalAnswer: string | undefined;
     
+    setStreamingAnswer('');
     setHistory(prev => [...prev, {
       id: Date.now().toString(),
       query,
@@ -155,6 +207,10 @@ export function useAgentRunner(
       const agent = createAlphaSentryAgent(agentConfig.modelProvider, agentConfig.model);
       const stream = await agent.stream(query, {
         maxSteps: 10,
+        memory: {
+          thread: `cli-${sessionIdRef.current}`,
+          resource: 'cli-user',
+        },
       });
       
       for await (const event of bridgeEvents(stream as any, { onAudit: appendAudit })) {
@@ -200,6 +256,19 @@ export function useAgentRunner(
       abortControllerRef.current = null;
     }
     
+    if (flushTimerRef.current) {
+      clearTimeout(flushTimerRef.current);
+      flushTimerRef.current = null;
+    }
+    textBufferRef.current = '';
+    setStreamingAnswer('');
+    
+    if (progressTimerRef.current) {
+      clearTimeout(progressTimerRef.current);
+      progressTimerRef.current = null;
+    }
+    latestProgressRef.current = '';
+    
     setHistory(prev => {
       const last = prev[prev.length - 1];
       if (!last || last.status !== 'processing') return prev;
@@ -215,6 +284,7 @@ export function useAgentRunner(
     workingState,
     error,
     isProcessing,
+    streamingAnswer,
     runQuery,
     cancelExecution,
     setError,

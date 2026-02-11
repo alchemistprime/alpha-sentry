@@ -3,8 +3,8 @@
  * CLI - Real-time agentic loop interface
  * Shows tool calls and progress in Claude Code style
  */
-import React, { useCallback, useRef } from 'react';
-import { Box, Text, useApp, useInput } from 'ink';
+import React, { useCallback, useMemo, useRef } from 'react';
+import { Box, Static, Text, useApp, useInput } from 'ink';
 import { config } from 'dotenv';
 
 import { Input } from './components/Input.js';
@@ -34,7 +34,6 @@ export function CLI() {
     selectionState,
     provider,
     model,
-    inMemoryChatHistoryRef,
     startSelection,
     cancelSelection,
     handleProviderSelect,
@@ -54,7 +53,8 @@ export function CLI() {
     runQuery,
     cancelExecution,
     setError,
-  } = useAgentRunner({ model, modelProvider: provider, maxIterations: 10 }, inMemoryChatHistoryRef);
+    streamingAnswer,
+  } = useAgentRunner({ model, modelProvider: provider, maxIterations: 10 });
   
   // Assign setError to ref so useModelSelection's callback can access it
   setErrorRef.current = setError;
@@ -194,15 +194,37 @@ export function CLI() {
     );
   }
   
+  // Split history: completed items go to Static (rendered once, never re-rendered),
+  // active item stays in the dynamic tree
+  const completedItems = useMemo(
+    () => history.filter(item => item.status !== 'processing'),
+    [history],
+  );
+  const activeItem = history.length > 0 && history[history.length - 1].status === 'processing'
+    ? history[history.length - 1]
+    : null;
+
+  // Hide WorkingIndicator during answering — text is streaming directly to stdout,
+  // so the Spinner's 80ms re-renders would cause jitter for no visual benefit.
+  const showWorkingIndicator = isProcessing && workingState.status !== 'answering';
+
+  const introItems = useMemo(() => [{ id: 'intro', provider, model }], [provider, model]);
+
   // Main chat interface
   return (
     <Box flexDirection="column">
-      <Intro provider={provider} model={model} />
+      <Static items={introItems}>
+        {(item) => <Intro key={item.id} provider={item.provider} model={item.model} />}
+      </Static>
       
-      {/* All history items (queries, events, answers) */}
-      {history.map(item => (
-        <HistoryItemView key={item.id} item={item} />
-      ))}
+      <Static items={completedItems}>
+        {(item) => <HistoryItemView key={item.id} item={item} />}
+      </Static>
+      
+      {/* Active (processing) item - rendered in dynamic tree for tool events */}
+      {activeItem && (
+        <HistoryItemView key={activeItem.id} item={activeItem} streamingAnswer={streamingAnswer} />
+      )}
       
       {/* Error display */}
       {error && (
@@ -211,8 +233,8 @@ export function CLI() {
         </Box>
       )}
       
-      {/* Working indicator - only show when processing */}
-      {isProcessing && <WorkingIndicator state={workingState} />}
+      {/* Working indicator - hidden during answering to avoid Spinner re-renders */}
+      {showWorkingIndicator && <WorkingIndicator state={workingState} />}
       
       {/* Input */}
       <Box marginTop={1}>

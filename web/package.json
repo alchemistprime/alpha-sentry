@@ -9,12 +9,8 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^1.0.0",
-    "@ai-sdk/openai": "^1.0.0",
-    "@upstash/redis": "^1.36.1",
     "ai": "^4.0.0",
     "dotenv": "^17.0.0",
-    "langsmith": "^0.4.10",
     "next": "^15.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

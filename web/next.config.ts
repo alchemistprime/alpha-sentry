@@ -13,13 +13,9 @@ const nextConfig: NextConfig = {
   },
   transpilePackages: ['../src'],
   serverExternalPackages: [
-    '@langchain/core',
-    '@langchain/openai',
-    '@langchain/anthropic',
-    '@langchain/google-genai',
-    '@langchain/ollama',
-    '@langchain/exa',
-    '@langchain/tavily',
+    '@mastra/core',
+    '@mastra/memory',
+    '@mastra/libsql',
     'exa-js',
   ],
   webpack: (config) => {

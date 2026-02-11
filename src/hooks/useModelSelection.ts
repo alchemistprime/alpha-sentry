@@ -1,10 +1,9 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import { getSetting, setSetting } from '../utils/config.js';
 import { getProviderDisplayName, checkApiKeyExistsForProvider, saveApiKeyForProvider } from '../utils/env.js';
 import { getModelsForProvider, getDefaultModelForProvider, type Model } from '../components/ModelSelector.js';
 import { getOllamaModels } from '../utils/ollama.js';
 import { DEFAULT_MODEL, DEFAULT_PROVIDER } from '../mastra/model-router.js';
-import { InMemoryChatHistory } from '../utils/in-memory-chat-history.js';
 
 // ============================================================================
 // Types
@@ -25,7 +24,6 @@ export interface UseModelSelectionResult {
   selectionState: ModelSelectionState;
   provider: string;
   model: string;
-  inMemoryChatHistoryRef: React.RefObject<InMemoryChatHistory>;
   
   // Actions
   startSelection: () => void;
@@ -72,16 +70,12 @@ export function useModelSelection(
   const [pendingModels, setPendingModels] = useState<Model[]>([]);
   const [pendingSelectedModelId, setPendingSelectedModelId] = useState<string | null>(null);
   
-  // Message history ref - shared with agent runner
-  const inMemoryChatHistoryRef = useRef<InMemoryChatHistory>(new InMemoryChatHistory(model));
-  
   // Helper to complete a model switch (DRY pattern)
   const completeModelSwitch = useCallback((newProvider: string, newModelId: string) => {
     setProvider(newProvider);
     setModel(newModelId);
     setSetting('provider', newProvider);
     setSetting('modelId', newModelId);
-    inMemoryChatHistoryRef.current.setModel(newModelId);
     setPendingProvider(null);
     setPendingModels([]);
     setPendingSelectedModelId(null);
@@ -236,7 +230,6 @@ export function useModelSelection(
     },
     provider,
     model,
-    inMemoryChatHistoryRef,
     startSelection,
     cancelSelection,
     handleProviderSelect,

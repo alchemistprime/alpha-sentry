@@ -6,11 +6,12 @@ import { formatResponse } from '../utils/markdown-table.js';
 interface AnswerBoxProps {
   stream?: AsyncGenerator<string>;
   text?: string;
+  isStreaming?: boolean;
   onStart?: () => void;
   onComplete?: (answer: string) => void;
 }
 
-export const AnswerBox = React.memo(function AnswerBox({ stream, text, onStart, onComplete }: AnswerBoxProps) {
+export const AnswerBox = React.memo(function AnswerBox({ stream, text, isStreaming: isStreamingProp, onStart, onComplete }: AnswerBoxProps) {
   const [content, setContent] = useState(text || '');
   const [isStreaming, setIsStreaming] = useState(!!stream);
 
@@ -59,7 +60,7 @@ export const AnswerBox = React.memo(function AnswerBox({ stream, text, onStart, 
         <Text color={colors.muted}>⏺ </Text>
         <Text>
           {displayContent}
-          {isStreaming && '▌'}
+          {(isStreaming || isStreamingProp) && '▌'}
         </Text>
       </Box>
     </Box>
