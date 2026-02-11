@@ -81,8 +81,9 @@
           "1",
           "5"
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "in-progress",
+        "subtasks": [],
+        "updatedAt": "2026-02-11T01:24:09.354Z"
       },
       {
         "id": "7",
@@ -155,7 +156,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-02-11T01:21:21.457Z",
+      "lastModified": "2026-02-11T01:24:09.355Z",
       "taskCount": 11,
       "completedCount": 5,
       "tags": [

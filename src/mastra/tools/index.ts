@@ -12,6 +12,7 @@ import { exaSearch } from '../../tools/search/exa.js';
 import { tavilySearch } from '../../tools/search/tavily.js';
 import { browserTool } from '../../tools/browser/browser.js';
 import { skillTool } from '../../tools/skill.js';
+import { webFetchTool } from '../../tools/fetch/web-fetch.js';
 
 export const financeTools = {
   getPriceSnapshot,
@@ -41,6 +42,7 @@ export const nonFinanceTools = {
   tavilySearch,
   browserTool,
   skillTool,
+  webFetchTool,
 };
 
 export const allLeafTools = {

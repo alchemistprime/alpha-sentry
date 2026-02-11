@@ -8,9 +8,9 @@
  * - fetchWithSsrFGuard replaced with plain fetch + manual redirect handling
  * - Firecrawl fallback removed (falls back to htmlToMarkdown instead)
  * - Config resolution replaced with hardcoded defaults
- * - Tool wrapper uses LangChain DynamicStructuredTool + Zod (not AnyAgentTool + TypeBox)
+ * - Tool wrapper uses Mastra createTool + Zod (not AnyAgentTool + TypeBox)
  */
-import { DynamicStructuredTool } from '@langchain/core/tools';
+import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import { formatToolResult } from '../types.js';
 import { wrapExternalContent, wrapWebContent } from './external-content.js';
@@ -335,14 +335,14 @@ async function runWebFetch(params: {
 }
 
 // ============================================================================
-// Tool definition (adapted for Dexter's LangChain + Zod framework)
+// Tool definition (adapted for Dexter's Mastra + Zod framework)
 // ============================================================================
 
-export const webFetchTool = new DynamicStructuredTool({
-  name: 'web_fetch',
+export const webFetchTool = createTool({
+  id: 'web_fetch',
   description:
     'Fetch and extract readable content from a URL (HTML → markdown/text). Use for lightweight page access without browser automation.',
-  schema: z.object({
+  inputSchema: z.object({
     url: z.string().describe('HTTP or HTTPS URL to fetch.'),
     extractMode: z
       .enum(['markdown', 'text'])
@@ -354,7 +354,7 @@ export const webFetchTool = new DynamicStructuredTool({
       .optional()
       .describe('Maximum characters to return (truncates when exceeded).'),
   }),
-  func: async (input) => {
+  execute: async (input) => {
     const extractMode: ExtractMode = input.extractMode === 'text' ? 'text' : 'markdown';
     const maxChars = resolveMaxChars(input.maxChars, DEFAULT_FETCH_MAX_CHARS, DEFAULT_FETCH_MAX_CHARS);
     const result = await runWebFetch({

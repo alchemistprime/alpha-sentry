@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
-import { Agent } from '../agent/agent.js';
-import { InMemoryChatHistory } from '../utils/in-memory-chat-history.js';
+import { mastra } from '../mastra/index.js';
+import { bridgeEvents } from '../mastra/event-bridge.js';
 import type { HistoryItem, WorkingState } from '../components/index.js';
 import type { AgentConfig, AgentEvent, DoneEvent } from '../agent/index.js';
 
@@ -30,8 +30,8 @@ export interface UseAgentRunnerResult {
 // ============================================================================
 
 export function useAgentRunner(
-  agentConfig: AgentConfig,
-  inMemoryChatHistoryRef: React.RefObject<InMemoryChatHistory>
+  _agentConfig: AgentConfig,
+  _inMemoryChatHistoryRef?: unknown,
 ): UseAgentRunnerResult {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [workingState, setWorkingState] = useState<WorkingState>({ status: 'idle' });
@@ -118,75 +118,56 @@ export function useAgentRunner(
         
       case 'done': {
         const doneEvent = event as DoneEvent;
-        updateLastHistoryItem(item => {
-          // Update answer in chat history for multi-turn context
-          if (doneEvent.answer) {
-            inMemoryChatHistoryRef.current?.saveAnswer(doneEvent.answer).catch(() => {
-              // Silently ignore errors in updating history
-            });
-          }
-          return {
-            answer: doneEvent.answer,
-            status: 'complete' as const,
-            duration: doneEvent.totalTime,
-            tokenUsage: doneEvent.tokenUsage,
-            tokensPerSecond: doneEvent.tokensPerSecond,
-          };
-        });
+        updateLastHistoryItem(() => ({
+          answer: doneEvent.answer,
+          status: 'complete' as const,
+          duration: doneEvent.totalTime,
+          tokenUsage: doneEvent.tokenUsage,
+          tokensPerSecond: doneEvent.tokensPerSecond,
+        }));
         setWorkingState({ status: 'idle' });
         break;
       }
     }
-  }, [updateLastHistoryItem, inMemoryChatHistoryRef]);
+  }, [updateLastHistoryItem]);
   
-  // Run a query through the agent
+  // Run a query through the Mastra agent
   const runQuery = useCallback(async (query: string): Promise<RunQueryResult | undefined> => {
-    // Create abort controller for this execution
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
     
-    // Track the final answer to return
     let finalAnswer: string | undefined;
     
-    // Add to history immediately
-    const itemId = Date.now().toString();
-    const startTime = Date.now();
     setHistory(prev => [...prev, {
-      id: itemId,
+      id: Date.now().toString(),
       query,
       events: [],
       answer: '',
       status: 'processing',
-      startTime,
+      startTime: Date.now(),
     }]);
-    
-    // Save query to chat history immediately for multi-turn context
-    inMemoryChatHistoryRef.current?.saveUserQuery(query);
     
     setError(null);
     setWorkingState({ status: 'thinking' });
     
     try {
-      const agent = await Agent.create({
-        ...agentConfig,
-        signal: abortController.signal,
+      const agent = mastra.getAgent('alpha-sentry');
+      const stream = await agent.stream(query, {
+        maxSteps: 10,
       });
-      const stream = agent.run(query, inMemoryChatHistoryRef.current!);
       
-      for await (const event of stream) {
-        // Capture the final answer from the done event
+      for await (const event of bridgeEvents(stream as any)) {
+        if (abortController.signal.aborted) break;
         if (event.type === 'done') {
           finalAnswer = (event as DoneEvent).answer;
         }
         handleEvent(event);
       }
       
-      // Return the answer if we got one
       if (finalAnswer) {
         return { answer: finalAnswer };
       }
     } catch (e) {
-      // Handle abort gracefully - mark as interrupted, not error
       if (e instanceof Error && e.name === 'AbortError') {
         setHistory(prev => {
           const last = prev[prev.length - 1];
@@ -199,7 +180,6 @@ export function useAgentRunner(
       
       const errorMsg = e instanceof Error ? e.message : String(e);
       setError(errorMsg);
-      // Mark the history item as error
       setHistory(prev => {
         const last = prev[prev.length - 1];
         if (!last || last.status !== 'processing') return prev;
@@ -210,7 +190,7 @@ export function useAgentRunner(
     } finally {
       abortControllerRef.current = null;
     }
-  }, [agentConfig, inMemoryChatHistoryRef, handleEvent]);
+  }, [handleEvent]);
   
   // Cancel the current execution
   const cancelExecution = useCallback(() => {
@@ -219,7 +199,6 @@ export function useAgentRunner(
       abortControllerRef.current = null;
     }
     
-    // Mark current processing item as interrupted
     setHistory(prev => {
       const last = prev[prev.length - 1];
       if (!last || last.status !== 'processing') return prev;
@@ -228,7 +207,6 @@ export function useAgentRunner(
     setWorkingState({ status: 'idle' });
   }, []);
   
-  // Check if currently processing
   const isProcessing = history.length > 0 && history[history.length - 1].status === 'processing';
   
   return {
