@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
-import { mastra } from '../mastra/index.js';
 import { bridgeEvents } from '../mastra/event-bridge.js';
+import { appendAudit } from '../mastra/audit-log.js';
+import { createAlphaSentryAgent } from '../mastra/agents/alpha-sentry.js';
 import type { HistoryItem, WorkingState } from '../components/index.js';
 import type { AgentConfig, AgentEvent, DoneEvent } from '../agent/index.js';
 
@@ -30,7 +31,7 @@ export interface UseAgentRunnerResult {
 // ============================================================================
 
 export function useAgentRunner(
-  _agentConfig: AgentConfig,
+  agentConfig: AgentConfig,
   _inMemoryChatHistoryRef?: unknown,
 ): UseAgentRunnerResult {
   const [history, setHistory] = useState<HistoryItem[]>([]);
@@ -151,12 +152,12 @@ export function useAgentRunner(
     setWorkingState({ status: 'thinking' });
     
     try {
-      const agent = mastra.getAgent('alpha-sentry');
+      const agent = createAlphaSentryAgent(agentConfig.modelProvider, agentConfig.model);
       const stream = await agent.stream(query, {
         maxSteps: 10,
       });
       
-      for await (const event of bridgeEvents(stream as any)) {
+      for await (const event of bridgeEvents(stream as any, { onAudit: appendAudit })) {
         if (abortController.signal.aborted) break;
         if (event.type === 'done') {
           finalAnswer = (event as DoneEvent).answer;
@@ -190,7 +191,7 @@ export function useAgentRunner(
     } finally {
       abortControllerRef.current = null;
     }
-  }, [handleEvent]);
+  }, [handleEvent, agentConfig.model, agentConfig.modelProvider]);
   
   // Cancel the current execution
   const cancelExecution = useCallback(() => {
