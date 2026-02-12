@@ -1,15 +1,16 @@
-import { config } from 'dotenv';
-import { resolve } from 'path';
-import { createAlphaSentryAgent } from '../../../../src/mastra/agents/alpha-sentry.js';
-import { bridgeEvents } from '../../../../src/mastra/event-bridge.js';
-import { appendAudit } from '../../../../src/mastra/audit-log.js';
-
-config({ path: resolve(process.cwd(), '../.env') });
-
 export const runtime = 'nodejs';
 export const maxDuration = 300;
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
+  const { config } = await import('dotenv');
+  const { resolve } = await import('path');
+  const { createAlphaSentryAgent } = await import('../../../../src/mastra/agents/alpha-sentry.js');
+  const { bridgeEvents } = await import('../../../../src/mastra/event-bridge.js');
+  const { appendAudit } = await import('../../../../src/mastra/audit-log.js');
+
+  config({ path: resolve(process.cwd(), '../.env') });
+
   const { messages, sessionId: clientSessionId } = await req.json();
 
   const sessionId = clientSessionId || crypto.randomUUID();
