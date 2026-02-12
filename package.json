@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit",
     "test": "bun test",
     "test:watch": "bun test --watch",
+    "studio": "npx mastra dev --dir src/mastra",
     "postinstall": "playwright install chromium"
   },
   "dependencies": {

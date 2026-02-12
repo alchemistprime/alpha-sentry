@@ -1,16 +1,25 @@
 import { Memory } from '@mastra/memory';
 import { LibSQLStore, LibSQLVector } from '@mastra/libsql';
 
-const MEMORY_DB_URL = 'file:.dexter/memory.db';
+function getMemoryDbUrl(): string {
+  if (process.env.LIBSQL_URL) return process.env.LIBSQL_URL;
+  if (process.env.VERCEL) return 'file:/tmp/memory.db';
+  return 'file:.dexter/memory.db';
+}
+
+const MEMORY_DB_URL = getMemoryDbUrl();
+const AUTH_TOKEN = process.env.LIBSQL_AUTH_TOKEN;
 
 export const storage = new LibSQLStore({
   id: 'alpha-sentry-storage',
   url: MEMORY_DB_URL,
+  ...(AUTH_TOKEN && { authToken: AUTH_TOKEN }),
 });
 
 const vector = new LibSQLVector({
   id: 'alpha-sentry-vector',
   url: MEMORY_DB_URL,
+  ...(AUTH_TOKEN && { authToken: AUTH_TOKEN }),
 });
 
 const WORKING_MEMORY_TEMPLATE = `# Research Context

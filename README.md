@@ -1,162 +1,152 @@
-# Dexter 🤖
+# AlphaSentry
 
-Dexter is an autonomous financial research agent that thinks, plans, and learns as it works. It performs analysis using task planning, self-reflection, and real-time market data. Think Claude Code, but built specifically for financial research.
+AI-powered financial research agent. Ask questions about stocks, earnings, filings, and metrics — get data-backed answers from live market data.
 
-<img width="1098" height="659" alt="Screenshot 2026-01-21 at 5 25 10 PM" src="https://github.com/user-attachments/assets/3bcc3a7f-b68a-4f5e-8735-9d22196ff76e" />
+Built with TypeScript, [Mastra](https://mastra.ai) (agent framework), [Ink](https://github.com/vadimdemedes/ink) (CLI), and Next.js (web).
 
-## Table of Contents
+Originally forked from [virattt/dexter](https://github.com/virattt/dexter).
 
-- [👋 Overview](#-overview)
-- [✅ Prerequisites](#-prerequisites)
-- [💻 How to Install](#-how-to-install)
-- [🚀 How to Run](#-how-to-run)
-- [📊 How to Evaluate](#-how-to-evaluate)
-- [🐛 How to Debug](#-how-to-debug)
-- [🤝 How to Contribute](#-how-to-contribute)
-- [📄 License](#-license)
+## What It Does
 
+- Answers financial research questions using live market data (prices, income statements, balance sheets, cash flows, SEC filings, analyst estimates, insider trades)
+- Routes queries through specialized sub-agents that select the right data tools automatically
+- Maintains conversation memory across sessions (working memory + semantic recall)
+- Runs a DCF valuation skill for intrinsic value analysis
+- Available as a CLI terminal app and a web chat interface
 
-## 👋 Overview
+## Prerequisites
 
-Dexter takes complex financial questions and turns them into clear, step-by-step research plans. It runs those tasks using live market data, checks its own work, and refines the results until it has a confident, data-backed answer.  
+- [Bun](https://bun.sh) (v1.0+)
+- API keys (see [Environment Variables](#environment-variables))
 
-**Key Capabilities:**
-- **Intelligent Task Planning**: Automatically decomposes complex queries into structured research steps
-- **Autonomous Execution**: Selects and executes the right tools to gather financial data
-- **Self-Validation**: Checks its own work and iterates until tasks are complete
-- **Real-Time Financial Data**: Access to income statements, balance sheets, and cash flow statements
-- **Safety Features**: Built-in loop detection and step limits to prevent runaway execution
+## Install
 
-[![Twitter Follow](https://img.shields.io/twitter/follow/virattt?style=social)](https://twitter.com/virattt)
-
-<img width="875" height="558" alt="Screenshot 2026-01-21 at 5 22 19 PM" src="https://github.com/user-attachments/assets/72d28363-69ea-4c74-a297-dfa60aa347f7" />
-
-
-## ✅ Prerequisites
-
-- [Bun](https://bun.com) runtime (v1.0 or higher)
-- OpenAI API key (get [here](https://platform.openai.com/api-keys))
-- Financial Datasets API key (get [here](https://financialdatasets.ai))
-- Exa API key (get [here](https://exa.ai)) - optional, for web search
-
-#### Installing Bun
-
-If you don't have Bun installed, you can install it using curl:
-
-**macOS/Linux:**
 ```bash
-curl -fsSL https://bun.com/install | bash
-```
-
-**Windows:**
-```bash
-powershell -c "irm bun.sh/install.ps1|iex"
-```
-
-After installation, restart your terminal and verify Bun is installed:
-```bash
-bun --version
-```
-
-## 💻 How to Install
-
-1. Clone the repository:
-```bash
-git clone https://github.com/virattt/dexter.git
-cd dexter
-```
-
-2. Install dependencies with Bun:
-```bash
+git clone https://github.com/alchemistprime/alpha-sentry.git
+cd alpha-sentry
 bun install
+cp .env.example .env
+# Edit .env with your API keys
 ```
 
-3. Set up your environment variables:
-```bash
-# Copy the example environment file
-cp env.example .env
+## Run
 
-# Edit .env and add your API keys (if using cloud providers)
-# OPENAI_API_KEY=your-openai-api-key
-# ANTHROPIC_API_KEY=your-anthropic-api-key (optional)
-# GOOGLE_API_KEY=your-google-api-key (optional)
-# XAI_API_KEY=your-xai-api-key (optional)
-# OPENROUTER_API_KEY=your-openrouter-api-key (optional)
+**CLI** (interactive terminal):
 
-# Institutional-grade market data for agents; AAPL, NVDA, MSFT are free
-# FINANCIAL_DATASETS_API_KEY=your-financial-datasets-api-key
-
-# (Optional) If using Ollama locally
-# OLLAMA_BASE_URL=http://127.0.0.1:11434
-
-# Web Search (Exa preferred, Tavily fallback)
-# EXASEARCH_API_KEY=your-exa-api-key
-# TAVILY_API_KEY=your-tavily-api-key
-```
-
-## 🚀 How to Run
-
-Run Dexter in interactive mode:
 ```bash
 bun start
 ```
 
-Or with watch mode for development:
+**Web app** (Next.js chat UI):
+
 ```bash
-bun dev
+cd web && bun install && bun run dev
 ```
 
-## 📊 How to Evaluate
+Opens at http://localhost:3000. See [web/README.md](web/README.md) for full web app documentation.
 
-Dexter includes an evaluation suite that tests the agent against a dataset of financial questions. Evals use LangSmith for tracking and an LLM-as-judge approach for scoring correctness.
+**Mastra Studio** (visual agent inspector):
 
-**Run on all questions:**
 ```bash
-bun run src/evals/run.ts
+bun run studio
 ```
 
-**Run on a random sample of data:**
+Opens at http://localhost:4111. Lets you chat with the agent, test tools individually, inspect memory/threads, and view traces.
+
+## Environment Variables
+
+Copy `.env.example` to `.env` and fill in your keys.
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `OPENAI_API_KEY` | Yes | Default model provider (gpt-5.2) |
+| `FINANCIAL_DATASETS_API_KEY` | Yes | Market data — prices, fundamentals, filings |
+| `EXASEARCH_API_KEY` | No | Web search (preferred provider) |
+| `TAVILY_API_KEY` | No | Web search (fallback if Exa not set) |
+| `ANTHROPIC_API_KEY` | No | For Claude models |
+| `GOOGLE_API_KEY` | No | For Gemini models |
+| `XAI_API_KEY` | No | For Grok models |
+| `OPENROUTER_API_KEY` | No | For OpenRouter-hosted models |
+| `LIBSQL_URL` | No | Turso LibSQL URL for remote memory persistence |
+| `LIBSQL_AUTH_TOKEN` | No | Turso auth token (required with `LIBSQL_URL`) |
+
+### Model Selection
+
+Default model is `gpt-5.2` on OpenAI. Switch providers interactively in the CLI with the `/model` command, or set env vars:
+
 ```bash
-bun run src/evals/run.ts --sample 10
+DEXTER_MODEL_PROVIDER=anthropic
+DEXTER_MODEL=claude-sonnet-4-20250514
 ```
 
-The eval runner displays a real-time UI showing progress, current question, and running accuracy statistics. Results are logged to LangSmith for analysis.
+Supported providers: OpenAI, Anthropic, Google, xAI, OpenRouter, Ollama (local).
 
-## 🐛 How to Debug
+## Project Structure
 
-Dexter logs all tool calls to a scratchpad file for debugging and history tracking. Each query creates a new JSONL file in `.dexter/scratchpad/`.
-
-**Scratchpad location:**
 ```
-.dexter/scratchpad/
-├── 2026-01-30-111400_9a8f10723f79.jsonl
-├── 2026-01-30-143022_a1b2c3d4e5f6.jsonl
-└── ...
+src/
+├── mastra/                  # Mastra agent framework layer
+│   ├── index.ts             # Mastra instance (registers agent + storage)
+│   ├── agents/              # AlphaSentry agent definition
+│   ├── tools/               # Mastra tool wrappers (financial-search, read-filings, financial-metrics)
+│   ├── memory.ts            # LibSQL-backed memory (message history, working memory, semantic recall)
+│   ├── model-router.ts      # Multi-provider model string routing
+│   ├── event-bridge.ts      # Mastra stream → AgentEvent bridge for CLI/web
+│   └── audit-log.ts         # JSONL audit trail of tool calls
+├── tools/
+│   ├── finance/             # Financial data tools (prices, fundamentals, filings, ratios, etc.)
+│   ├── search/              # Web search (Exa, Tavily)
+│   ├── browser/             # Playwright-based web scraping
+│   └── fetch/               # Web page fetcher
+├── skills/                  # SKILL.md-based workflows
+│   └── dcf/                 # DCF valuation skill
+├── components/              # Ink CLI components
+├── hooks/                   # React hooks (agent runner, model selection, input history)
+├── cli.tsx                  # CLI interface
+└── index.tsx                # Entry point
+
+web/                         # Next.js web chat interface
+├── app/
+│   ├── api/chat/route.ts    # SSE streaming API endpoint
+│   └── page.tsx             # Chat UI
+└── README.md                # Web app documentation
 ```
 
-Each file contains newline-delimited JSON entries tracking:
-- **init**: The original query
-- **tool_result**: Each tool call with arguments, raw result, and LLM summary
-- **thinking**: Agent reasoning steps
+## Tools
 
-**Example scratchpad entry:**
-```json
-{"type":"tool_result","timestamp":"2026-01-30T11:14:05.123Z","toolName":"get_income_statements","args":{"ticker":"AAPL","period":"annual","limit":5},"result":{...},"llmSummary":"Retrieved 5 years of Apple annual income statements showing revenue growth from $274B to $394B"}
+| Tool | Description |
+|------|-------------|
+| `financial_search` | Primary financial data tool — routes queries to specialized sub-tools for prices, fundamentals, filings, ratios, estimates, insider trades |
+| `financial_metrics` | Direct metric lookups (revenue, market cap, P/E, EPS, etc.) |
+| `read_filings` | SEC filing reader — 10-K, 10-Q, 8-K documents with section extraction |
+| `web_search` | General web search via Exa or Tavily |
+| `web_fetch` | Read web page content (articles, press releases, investor relations) |
+| `browser` | Playwright browser for JavaScript-rendered pages |
+| `skill` | Invoke SKILL.md workflows (e.g., DCF valuation) |
+
+## Memory
+
+AlphaSentry uses Mastra Memory backed by LibSQL for persistence across sessions:
+
+- **Message history** — last 20 messages per thread
+- **Working memory** — persistent user profile, active tickers, session state
+- **Semantic recall** — retrieves relevant older messages by embedding similarity
+
+Local development uses `file:.dexter/memory.db`. For production (Vercel), set `LIBSQL_URL` and `LIBSQL_AUTH_TOKEN` pointing to a [Turso](https://turso.tech) database.
+
+## Development
+
+```bash
+bun run dev          # CLI with watch mode
+bun run typecheck    # Type checking
+bun test             # Run tests
+bun run studio       # Mastra Studio
 ```
 
-This makes it easy to inspect exactly what data the agent gathered and how it interpreted results.
+## Deployment
 
-## 🤝 How to Contribute
+The web app deploys to Vercel. See [web/README.md](web/README.md) for Vercel configuration, required env vars, and deployment notes.
 
-1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
+## License
 
-**Important**: Please keep your pull requests small and focused.  This will make it easier to review and merge.
-
-
-## 📄 License
-
-This project is licensed under the MIT License.
+MIT
