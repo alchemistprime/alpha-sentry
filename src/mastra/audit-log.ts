@@ -17,7 +17,7 @@ const AUDIT_FILE = join(AUDIT_DIR, 'audit.jsonl');
 let dirEnsured = false;
 
 export async function appendAudit(entry: AuditEntry): Promise<void> {
-  if (process.env.VERCEL) return;
+  if (process.env.VERCEL || process.env.MASTRA_CLOUD) return;
   try {
     if (!dirEnsured) {
       await mkdir(AUDIT_DIR, { recursive: true });

@@ -14,7 +14,7 @@
     "test": "bun test",
     "test:watch": "bun test --watch",
     "studio": "npx mastra dev --dir src/mastra",
-    "postinstall": "playwright install chromium"
+    "postinstall": "node -e \"if(!process.env.MASTRA_CLOUD){try{require('child_process').execSync('playwright install chromium',{stdio:'inherit'})}catch(e){}}\""
   },
   "dependencies": {
     "@mastra/core": "^1.4.0",
