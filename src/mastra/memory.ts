@@ -4,7 +4,7 @@ import { LibSQLStore, LibSQLVector } from '@mastra/libsql';
 function getMemoryDbUrl(): string {
   if (process.env.LIBSQL_URL) return process.env.LIBSQL_URL;
   if (process.env.VERCEL) return 'file:/tmp/memory.db';
-  return 'file:.dexter/memory.db';
+  return 'file:./mastra.db';
 }
 
 const MEMORY_DB_URL = getMemoryDbUrl();
