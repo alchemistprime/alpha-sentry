@@ -1,0 +1,49 @@
+sequenceDiagram
+    autonumber
+    participant User
+    participant CLI as CLI / Web
+    participant Hook as useAgentRunner
+    participant Agent as AlphaSentry Agent
+    participant Memory as Mastra Memory
+    participant Tools as Tools
+    participant LLM as LLM Provider
+
+    link CLI: src/index.tsx @ vscode://vscode-remote/wsl+Ubuntu/home/devalpha/Develop/Bindle/alpha-sentry/src/index.tsx
+    link CLI: src/cli.tsx @ vscode://vscode-remote/wsl+Ubuntu/home/devalpha/Develop/Bindle/alpha-sentry/src/cli.tsx
+    link CLI: web/app/api/chat/route.ts @ vscode://vscode-remote/wsl+Ubuntu/home/devalpha/Develop/Bindle/alpha-sentry/web/app/api/chat/route.ts
+    link Hook: useAgentRunner.ts @ vscode://vscode-remote/wsl+Ubuntu/home/devalpha/Develop/Bindle/alpha-sentry/src/hooks/useAgentRunner.ts
+    link Agent: alpha-sentry.ts @ vscode://vscode-remote/wsl+Ubuntu/home/devalpha/Develop/Bindle/alpha-sentry/src/mastra/agents/alpha-sentry.ts
+    link Memory: memory.ts @ vscode://vscode-remote/wsl+Ubuntu/home/devalpha/Develop/Bindle/alpha-sentry/src/mastra/memory.ts
+    link Tools: financial-search.ts @ vscode://vscode-remote/wsl+Ubuntu/home/devalpha/Develop/Bindle/alpha-sentry/src/mastra/tools/financial-search.ts
+    link Tools: tools/index @ vscode://vscode-remote/wsl+Ubuntu/home/devalpha/Develop/Bindle/alpha-sentry/src/mastra/tools/index.ts
+    link LLM: model-router.ts @ vscode://vscode-remote/wsl+Ubuntu/home/devalpha/Develop/Bindle/alpha-sentry/src/mastra/model-router.ts
+    link LLM: providers.ts @ vscode://vscode-remote/wsl+Ubuntu/home/devalpha/Develop/Bindle/alpha-sentry/src/providers.ts
+
+    User->>CLI: Submit query
+    CLI->>Hook: Run agent
+    Hook->>Agent: createAlphaSentryAgent
+    Agent->>Memory: Load conversation history
+    Memory-->>Agent: Past messages
+
+    loop Agent loop (maxSteps: 10 CLI / 5 Web)
+        Agent->>LLM: Stream completion
+        LLM-->>Agent: thinking / tool calls / text
+        Agent->>Hook: bridgeEvents (thinking, tool_start, etc.)
+
+        alt Tool call
+            Agent->>Tools: Invoke tool
+            Tools-->>Agent: Result
+            Agent->>Memory: Update context
+        end
+    end
+
+    Agent->>LLM: Final answer (no tools)
+    LLM-->>Agent: Streaming text
+    Agent->>Hook: answer_start, text_delta
+    Hook->>CLI: Render to UI / SSE
+    CLI->>User: Display response
+// [MermaidChart: 0c897ef4-967c-4a30-9c31-73c32203540e]
+// [MermaidChart: e2412459-3085-4efa-aaf4-5892a6194877]
+// [MermaidChart: e2412459-3085-4efa-aaf4-5892a6194877]
+// [MermaidChart: e2412459-3085-4efa-aaf4-5892a6194877]
+// [MermaidChart: e2412459-3085-4efa-aaf4-5892a6194877]

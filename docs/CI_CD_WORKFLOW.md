@@ -55,7 +55,7 @@ git add <specific-files>   # Preferred: add specific files
 git add .                  # Add all changes (be careful with .env files)
 
 # Commit with a descriptive message
-git commit -m "feat: add LangSmith trace flushing for Vercel"
+git commit -m "feat: add new feature"
 ```
 
 ### Commit Message Convention
@@ -147,15 +147,12 @@ Set environment variables in Vercel Dashboard:
 |----------|----------|-------------|
 | `OPENAI_API_KEY` | Yes | OpenAI API key |
 | `FINANCIAL_DATASETS_API_KEY` | Yes | Financial data API |
-| `LANGCHAIN_TRACING_V2` | Yes | Set to `true` |
-| `LANGCHAIN_API_KEY` | Yes | LangSmith API key |
-| `LANGCHAIN_PROJECT` | Yes | e.g., `alpha-sentry` |
-| `KV_REST_API_URL` | Optional | Upstash Redis URL |
-| `KV_REST_API_TOKEN` | Optional | Upstash Redis token |
+| `LIBSQL_URL` | Optional | Turso LibSQL URL for persistent memory |
+| `LIBSQL_AUTH_TOKEN` | Optional | Required with `LIBSQL_URL` |
 
 ### Via Vercel CLI
 ```bash
-vercel env add LANGCHAIN_API_KEY    # Prompts for value
+vercel env add LIBSQL_URL           # Prompts for value
 vercel env ls                        # List all env vars
 ```
 
@@ -165,7 +162,7 @@ vercel env ls                        # List all env vars
 
 ```bash
 # 1. Create feature branch
-git checkout -b fix/langsmith-tracing
+git checkout -b feature/my-feature
 
 # 2. Make changes
 # ... edit files ...
@@ -175,11 +172,11 @@ cd web && bun run dev
 # Verify changes work
 
 # 4. Commit
-git add web/app/api/chat/route.ts web/package.json
-git commit -m "fix: flush LangSmith traces in serverless environment"
+git add .
+git commit -m "feat: implement my feature"
 
 # 5. Push
-git push origin fix/langsmith-tracing
+git push origin feature/my-feature
 
 # 6. Create PR on GitHub
 # - CI runs automatically
@@ -192,7 +189,6 @@ git push origin fix/langsmith-tracing
 # 8. Verify
 # - Check Vercel dashboard for deployment status
 # - Test production URL
-# - Check LangSmith for traces
 ```
 
 ---

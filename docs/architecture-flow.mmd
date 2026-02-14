@@ -1,0 +1,74 @@
+flowchart TD
+    subgraph Entry["Entry Points"]
+        STUDIO["🎛 Mastra Studio\nbun run studio"]
+        CLI["⌨ CLI\nbun start"]
+        WEB["🌐 Web App\nlocalhost:3000"]
+    end
+
+    subgraph Orchestration["Orchestration"]
+        HOOK["useAgentRunner\nsrc/hooks/useAgentRunner.ts"]
+        MASTRA["Mastra Instance\nsrc/mastra/index.ts"]
+        AGENT["AlphaSentry Agent\nsrc/mastra/agents/alpha-sentry.ts"]
+        BRIDGE["Event Bridge\nsrc/mastra/event-bridge.ts"]
+    end
+
+    subgraph LLM["LLM Layer"]
+        ROUTER["Model Router\nsrc/mastra/model-router.ts"]
+        PROVIDERS["Providers\nOpenAI · Anthropic · Google · xAI"]
+    end
+
+    subgraph Memory["Memory & Storage"]
+        MEMORY["Mastra Memory\nsrc/mastra/memory.ts"]
+        LIBSQL["LibSQL / Turso"]
+        AUDIT["Audit Log\n.dexter/scratchpad/"]
+    end
+
+    subgraph Tools["Tools"]
+        FS["financial_search"]
+        FM["financial_metrics"]
+        RF["read_filings"]
+        WS["web_search"]
+        WF["web_fetch"]
+        BR["browser"]
+        SK["skill"]
+    end
+
+    subgraph FinanceRouter["Financial Router"]
+        ROUTER_INNER["Sub-Agent\nprices · fundamentals · filings\nestimates · news · crypto"]
+    end
+
+    subgraph External["External APIs"]
+        FD_API["Financial Datasets API"]
+        SEARCH_API["Exa / Tavily"]
+        PLAYWRIGHT["Playwright"]
+    end
+
+    STUDIO --> MASTRA
+    CLI --> HOOK
+    WEB --> HOOK
+    HOOK --> AGENT
+    MASTRA --> AGENT
+
+    AGENT --> ROUTER
+    ROUTER --> PROVIDERS
+
+    AGENT <--> MEMORY
+    MEMORY <--> LIBSQL
+    AGENT --> BRIDGE
+    BRIDGE --> HOOK
+    BRIDGE --> AUDIT
+
+    AGENT --> FS
+    AGENT --> FM
+    AGENT --> RF
+    AGENT --> WS
+    AGENT --> WF
+    AGENT --> BR
+    AGENT --> SK
+
+    FS --> ROUTER_INNER
+    ROUTER_INNER --> FD_API
+    WS --> SEARCH_API
+    WF --> External
+    BR --> PLAYWRIGHT
+// [MermaidChart: b4b32e07-eeda-400f-ac33-0ba4343d80ae]

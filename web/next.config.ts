@@ -16,6 +16,7 @@ const nextConfig: NextConfig = {
     '@mastra/core',
     '@mastra/memory',
     '@mastra/libsql',
+
     'exa-js',
   ],
   webpack: (config) => {

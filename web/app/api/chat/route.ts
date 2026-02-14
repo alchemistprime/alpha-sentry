@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: Request) {
   const { config } = await import('dotenv');
   const { resolve } = await import('path');
-  const { createAlphaSentryAgent } = await import('../../../../src/mastra/agents/alpha-sentry.js');
+  const { mastra } = await import('../../../../src/mastra/index.js');
   const { bridgeEvents } = await import('../../../../src/mastra/event-bridge.js');
   const { appendAudit } = await import('../../../../src/mastra/audit-log.js');
 
@@ -26,10 +26,7 @@ export async function POST(req: Request) {
   const stream = new ReadableStream({
     async start(controller) {
       try {
-        const agent = createAlphaSentryAgent(
-          process.env.DEXTER_MODEL_PROVIDER || 'openai',
-          process.env.DEXTER_MODEL || 'gpt-5.2',
-        );
+        const agent = mastra.getAgent('alpha-sentry');
 
         const sendEvent = (event: object) => {
           controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));

@@ -1,7 +1,7 @@
 # Repository Guidelines
 
 - Repo: https://github.com/virattt/dexter
-- Dexter is a CLI-based AI agent for deep financial research, built with TypeScript, Ink (React for CLI), and LangChain.
+- Dexter is a CLI-based AI agent for deep financial research, built with TypeScript, Ink (React for CLI), and Mastra.
 
 ## Project Structure
 
@@ -18,7 +18,7 @@
   - Browser: `src/tools/browser/` (Playwright-based web scraping)
   - Skills: `src/skills/` (SKILL.md-based extensible workflows, e.g. DCF valuation)
   - Utils: `src/utils/` (env, config, caching, token estimation, markdown tables)
-  - Evals: `src/evals/` (LangSmith evaluation runner with Ink UI)
+  - Evals: `src/evals/` (evaluation runner with Ink UI)
 - Config: `.dexter/settings.json` (persisted model/provider selection)
 - Environment: `.env` (API keys; see `env.example`)
 - Scripts: `scripts/release.sh`
@@ -82,7 +82,7 @@
 - Ollama: `OLLAMA_BASE_URL` (default `http://127.0.0.1:11434`)
 - Finance: `FINANCIAL_DATASETS_API_KEY`
 - Search: `EXASEARCH_API_KEY` (preferred), `TAVILY_API_KEY` (fallback)
-- Tracing: `LANGSMITH_API_KEY`, `LANGSMITH_ENDPOINT`, `LANGSMITH_PROJECT`, `LANGSMITH_TRACING`
+- Storage: `LIBSQL_URL` (optional, Turso LibSQL), `LIBSQL_AUTH_TOKEN` (required with `LIBSQL_URL`)
 - Never commit `.env` files or real API keys.
 
 ## Version & Release

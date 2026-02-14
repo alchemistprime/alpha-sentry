@@ -17,6 +17,7 @@ const AUDIT_FILE = join(AUDIT_DIR, 'audit.jsonl');
 let dirEnsured = false;
 
 export async function appendAudit(entry: AuditEntry): Promise<void> {
+  if (process.env.VERCEL) return;
   try {
     if (!dirEnsured) {
       await mkdir(AUDIT_DIR, { recursive: true });
